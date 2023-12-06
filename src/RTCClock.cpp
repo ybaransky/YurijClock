@@ -27,6 +27,12 @@ void RTC::init(void) {
     }
 }
 
+void RTC::adjust(const DateTime& dt) {
+    if (_rtcHard) 
+        _rtcHard->adjust(dt);
+    else
+        _rtcSoft->adjust(dt);
+}
 
 DateTime RTC::now(void) {
     return _rtcHard ? _rtcHard->now() : _rtcSoft->now();

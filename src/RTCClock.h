@@ -8,5 +8,6 @@ class RTC {
     public:
         void        init(void);
         DateTime    now(void);
+        void        adjust(const DateTime&);
         bool        attachSQWInterrupt(void (*callback)(void));
 };

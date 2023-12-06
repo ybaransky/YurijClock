@@ -5,8 +5,10 @@
 #include "Constants.h"
 #include "RTCClock.h"
 
-// task scheduler
-Scheduler      *scheduler;
+
+RTC         *rtc;   
+OneButton   *button;
+Scheduler   *scheduler;
 
 void initScheduler(void) {
   scheduler = new Scheduler; 
@@ -14,10 +16,15 @@ void initScheduler(void) {
 }
 
 // push button
-OneButton      *button;
 void oneButtonSingleClick() { PV(millis()); SPACE; PL("singleClick"); }
 void oneButtonDoubleClick() { PV(millis()); SPACE; PL("doubleClick"); }
-void oneButtonLongPress()   { PV(millis()); SPACE; PL("longPress"); }
+void oneButtonLongPress()   { 
+  DateTime dt(F(__DATE__),F(__TIME__));
+  PV(millis()); SPACE; P("longPress"); 
+  P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
+  rtc->adjust(dt);
+}
+
 void initOneButton() {
   button =  new OneButton(ONEBUTTON_PIN,false,false);  // D8
   button->attachClick(oneButtonSingleClick);
@@ -25,10 +32,6 @@ void initOneButton() {
   button->attachLongPressStart(oneButtonLongPress);
   button->setClickMs(400);
 }
-
-// RTC Clock
-RTC *rtc;
-
 
 volatile bool SECOND_TICK;
 void IRAM_ATTR callback1Hz(void) {
@@ -38,6 +41,7 @@ void IRAM_ATTR callback1Hz(void) {
 void callback1HzScheduler(void) {
     SECOND_TICK = true;
 }
+
 Task task(2000, TASK_FOREVER, &callback1HzScheduler);
 void initRTC() {
   rtc = new RTC();
