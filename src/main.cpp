@@ -4,11 +4,12 @@
 #include "Debug.h"
 #include "Constants.h"
 #include "RTCClock.h"
-
+#include "Display.h"
 
 RTC         *rtc;   
 OneButton   *button;
 Scheduler   *scheduler;
+Display     *display;
 
 void initScheduler(void) {
   scheduler = new Scheduler; 
@@ -52,17 +53,30 @@ void initRTC() {
   }
 }
 
+void  initDisplay(void) {
+  display = new Display();
+  display->init();
+}
+
 void setup() {
   // Initialize serial port
   Serial.begin(9600);
   while (!Serial) continue;
 
-  delay(2000);
+  Serial.flush();
+  delay(1000);
+  PL("starting");
   initOneButton();
   initScheduler();
   initRTC();
+  initDisplay();
 
+  Serial.flush();
+  delay(1000);
+  PL("");
   P("compile time: "); PL(__TIMESTAMP__);
+
+  display->test();
 }
 
 void loop() {

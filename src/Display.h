@@ -1,12 +1,17 @@
-#pragma
-
+#pragma once
 #include <TM1637Display.h>
 
-class Display {
+typedef TM1637Display Segment;
+typedef TM1637Display* SegmentPtr;
 
-    TM1637Display* _display[3]; // left most is the most significant
+class Display {
+    static const int N_SEGMENTS=3;
+
 
     public:
-        void    init();
+        void    init(void);
+        void    setBrightness(uint8_t);
+        void    test();
 
+        Segment& device(int i); 
 };
