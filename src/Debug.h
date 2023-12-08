@@ -7,5 +7,5 @@
 #define PVL(x)          P(#x); P("="); PL(x)
 #define SPACE           P(" ")
 
-#define NELEMS(x)       (sizeof(x) / sizeof((x)[0])     // number of elements in array x
+#define N_ELETS(x)   (sizeof(x) / sizeof((x)[0]))     // number of elements in array x
 

@@ -5,11 +5,13 @@
 #include "Constants.h"
 #include "RTCClock.h"
 #include "Display.h"
+#include "Config.h"
 
 RTC         *rtc;   
 OneButton   *button;
 Scheduler   *scheduler;
 Display     *display;
+Config      *config;
 
 // push button
 void oneButtonSingleClick() { PV(millis()); SPACE; PL("singleClick"); }
@@ -48,6 +50,11 @@ void initRTC() {
   }
 }
 
+void  initConfig(void) {
+  config = new Config();
+  config->init();
+}
+
 void  initDisplay(void) {
   display = new Display();
   display->init();
@@ -70,7 +77,9 @@ void setup() {
 
   Serial.flush();
   delay(1000);
+
   PL("starting");
+  initConfig();
   initOneButton();
   initScheduler();
   initRTC();
@@ -80,6 +89,18 @@ void setup() {
   delay(1000);
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
+
+  DateTime future(config->_future);
+  DateTime current = rtc->now();
+
+  PVL(future.timestamp(DateTime::TIMESTAMP_FULL)) ;
+  PVL(current.timestamp(DateTime::TIMESTAMP_FULL));
+  TimeSpan span(future.unixtime() - current.unixtime());
+
+  P("from now till then "); 
+  P("days="); P(span.days()); SPACE;
+  P("mins="); P(span.minutes()); SPACE;
+  P("secs="); PL(span.seconds());
 
   display->test();
 }
