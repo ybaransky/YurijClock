@@ -31,3 +31,9 @@
     #define TM1637_DIO_2    TX
 #endif
 
+// tm1637 display
+#define LEADING_ZERO  true
+#define BRIGHTEST  7
+#define DIMMEST  1
+#define COLON  0x40 // 0b01000000;
+

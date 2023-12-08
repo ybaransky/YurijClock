@@ -11,11 +11,6 @@ OneButton   *button;
 Scheduler   *scheduler;
 Display     *display;
 
-void initScheduler(void) {
-  scheduler = new Scheduler; 
-  scheduler->init();
-}
-
 // push button
 void oneButtonSingleClick() { PV(millis()); SPACE; PL("singleClick"); }
 void oneButtonDoubleClick() { PV(millis()); SPACE; PL("doubleClick"); }
@@ -58,6 +53,16 @@ void  initDisplay(void) {
   display->init();
 }
 
+bool MILLIS_100_TICK = false;
+void callback100ms(void) { MILLIS_100_TICK = true; }
+Task task2(100, TASK_FOREVER, &callback100ms);
+void initScheduler(void) {
+  scheduler = new Scheduler; 
+  scheduler->init();
+  scheduler->addTask(task2);
+  task2.enable();
+}
+
 void setup() {
   // Initialize serial port
   Serial.begin(9600);
@@ -89,5 +94,11 @@ void loop() {
     String str = dt.timestamp(DateTime::TIMESTAMP_FULL);
     PV(millis()); SPACE; PL(str);
     SECOND_TICK = false;
+  }
+
+  if (MILLIS_100_TICK) {
+    static int count=0;
+    display->showInteger(count++);
+    MILLIS_100_TICK = false;
   }
 }
