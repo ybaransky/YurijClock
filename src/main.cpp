@@ -1,125 +1,81 @@
 #include <Arduino.h>
-#include <OneButton.h>
-#include <TaskScheduler.h>
+#include "Button.h"
 #include "Debug.h"
 #include "Constants.h"
-#include "RTCClock.h"
+#include "RTClock.h"
 #include "Display.h"
 #include "Config.h"
 
-RTC         *rtc;   
+/*
+**********************************************************************
+******************** Globals *****************************************
+**********************************************************************
+*/
+
+RTClock     *rtClock;   
 OneButton   *button;
-Scheduler   *scheduler;
 Display     *display;
 Config      *config;
+RTTimer     timer;
 
-// push button
-void oneButtonSingleClick() { PV(millis()); SPACE; PL("singleClick"); }
-void oneButtonDoubleClick() { PV(millis()); SPACE; PL("doubleClick"); }
-void oneButtonLongPress()   { 
-  DateTime dt(F(__DATE__),F(__TIME__));
-  PV(millis()); SPACE; P("longPress"); 
-  P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
-  rtc->adjust(dt);
-}
 
-void initOneButton() {
-  button =  new OneButton(ONEBUTTON_PIN,false,false);  // D8
-  button->attachClick(oneButtonSingleClick);
-  button->attachDoubleClick(oneButtonDoubleClick);
-  button->attachLongPressStart(oneButtonLongPress);
-  button->setClickMs(400);
-}
-
-volatile bool SECOND_TICK;
-void IRAM_ATTR callback1Hz(void) {
-    SECOND_TICK = true;
-}
-
-void callback1HzScheduler(void) {
-    SECOND_TICK = true;
-}
-
-Task task(2000, TASK_FOREVER, &callback1HzScheduler);
-void initRTC() {
-  rtc = new RTC();
-  rtc->init(); 
-  if (!rtc->attachSQWInterrupt(callback1Hz)) {
-    scheduler->addTask(task);
-    task.enable();
-  }
-}
-
-void  initConfig(void) {
-  config = new Config();
-  config->init();
-}
-
-void  initDisplay(void) {
-  display = new Display();
-  display->init();
-}
-
-bool MILLIS_100_TICK = false;
-void callback100ms(void) { MILLIS_100_TICK = true; }
-Task task2(100, TASK_FOREVER, &callback100ms);
-void initScheduler(void) {
-  scheduler = new Scheduler; 
-  scheduler->init();
-  scheduler->addTask(task2);
-  task2.enable();
+void timeToWedding(void) {
+  DateTime fut(config->_future);
+  DateTime cur = rtClock->now();
+  PVL(fut.timestamp(DateTime::TIMESTAMP_FULL)) ;
+  PVL(cur.timestamp(DateTime::TIMESTAMP_FULL));
+  TimeSpan span(fut.unixtime() - cur.unixtime());
+  P("from now till then "); 
+  P("days=");  P(span.days()); SPACE;
+  P("hours="); P(span.hours()); SPACE;
+  P("mins=");  P(span.minutes()); SPACE;
+  P("secs=");  PL(span.seconds());
 }
 
 void setup() {
   // Initialize serial port
   Serial.begin(9600);
   while (!Serial) continue;
-
   Serial.flush();
   delay(1000);
 
   PL("starting");
-  initConfig();
-  initOneButton();
-  initScheduler();
-  initRTC();
-  initDisplay();
+  
+  config  = initConfig();
+  button  = initOneButton();
+  display = initDisplay();
+  rtClock = initRTClock();
 
   Serial.flush();
   delay(1000);
+
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
 
-  DateTime future(config->_future);
-  DateTime current = rtc->now();
-
-  PVL(future.timestamp(DateTime::TIMESTAMP_FULL)) ;
-  PVL(current.timestamp(DateTime::TIMESTAMP_FULL));
-  TimeSpan span(future.unixtime() - current.unixtime());
-
-  P("from now till then "); 
-  P("days="); P(span.days()); SPACE;
-  P("mins="); P(span.minutes()); SPACE;
-  P("secs="); PL(span.seconds());
-
+  timeToWedding();
   display->test();
 }
 
 void loop() {
-  // check for button events
-  button->tick();
-  scheduler->execute();
+  static int count = 0;
+  static uint32_t now;
 
-  if (SECOND_TICK) {
-    DateTime dt = rtc->now();
-    String str = dt.timestamp(DateTime::TIMESTAMP_FULL);
-    PV(millis()); SPACE; PL(str);
-    SECOND_TICK = false;
+  button->tick();
+  rtClock->tick();
+
+  if (CLOCK_TICK_1_SEC) {
+    CLOCK_TICK_1_SEC = false;
+    timer.start(millis(),100);
+    String str = rtClock->now().timestamp(DateTime::TIMESTAMP_FULL);
+    P(str); SPACE; PV(millis()); SPACE; PVL(count); 
+    display->showInteger(count*10 + 0);
+    if (1==count%10)
+      timeToWedding();
+    count++;
   }
 
-  if (MILLIS_100_TICK) {
-    static int count=0;
-    display->showInteger(count++);
-    MILLIS_100_TICK = false;
+
+  if (timer.tick(millis())) {
+    display->showInteger(count*10 + timer.count());
   }
 }

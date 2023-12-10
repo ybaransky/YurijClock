@@ -7,3 +7,5 @@ class Config {
 
         char    _future[20];    // iso formate "2023-12-29T15:45:00"
 };
+
+extern Config* initConfig(void);
