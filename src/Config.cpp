@@ -3,7 +3,7 @@
 #include "Config.h"
 #include "Debug.h"
 
-#define DEFAULT_FUTURE  "2023-12-29T15:45:00"
+#define DEFAULT_FUTURE  "2023-12-22T15:45:00"
 
 Config* initConfig(void) {
     Config* cfg = new Config();

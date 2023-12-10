@@ -58,7 +58,7 @@ void setup() {
 
 void loop() {
   static int count = 0;
-  static uint32_t now;
+  static TimeSpan span;
 
   button->tick();
   rtClock->tick();
@@ -66,16 +66,19 @@ void loop() {
   if (CLOCK_TICK_1_SEC) {
     CLOCK_TICK_1_SEC = false;
     timer.start(millis(),100);
-    String str = rtClock->now().timestamp(DateTime::TIMESTAMP_FULL);
-    P(str); SPACE; PV(millis()); SPACE; PVL(count); 
-    display->showInteger(count*10 + 0);
+
+    DateTime fut(config->_future);
+    DateTime cur = rtClock->now();
+    span = TimeSpan(fut.unixtime() - cur.unixtime());
+
+    display->showTimeSpan(span,0);
     if (1==count%10)
       timeToWedding();
     count++;
   }
 
-
   if (timer.tick(millis())) {
-    display->showInteger(count*10 + timer.count());
+    display->showTimeSpan(span,10 - timer.count());
   }
+
 }
