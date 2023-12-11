@@ -1,5 +1,6 @@
 #pragma once
 #include <RTCLib.h>
+#include "Constants.h"
 #include "Segment.h"
 
 #define SEGMENT_BRIGHTEST 7
@@ -7,14 +8,6 @@
 #define SEGMENT_ON        true
 #define SEGMENT_OFF       false
 #define SEGMENT_COLON     0x40
-
-enum  {
-  N_SEGMENTS=3, DDDD=2, HHMM=1, SSUU=0,
-  N_ELEMENTS=5, DAYS=4, HOURS=3, MINUTES=2, SECONDS=1, MILLIS=0,
-  N_DIGITS=12,   // 0=right-most
-  N_SEGMENT_NAME=5,
-};
-
 class Display {
    public:
     void    init(void);

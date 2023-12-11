@@ -31,8 +31,9 @@ class Segment {
         void    drawSSUU(int,uint8_t);
         void    drawSSUU(int);
 
-        bool    changed(byte*);
-        void    setSegment(byte* data,bool colon=false);
+        bool    changed(uint8_t*);
+        void    saveToCache(uint8_t*);
+        void    setSegment(uint8_t* data,bool colon=false);
 
         int     _iam;
         byte    _data[4]; 

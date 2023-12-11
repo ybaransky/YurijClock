@@ -1,6 +1,6 @@
 #include <Arduino.h>
+#include "Constants.h"
 #include "Segment.h"
-
 
 /*
 *************************************************************************
@@ -11,7 +11,8 @@
 int     Segment::format = 1; 
 #define COMMON_CLK   1
 #ifdef COMMON_CLK
-Device  Segment::devices[3] = {Device(D3,D4),Device(D3,D5),Device(D3,D6)};
+Device  Segment::devices[3] = {Device(D3,D6),Device(D3,D5),Device(D3,D4)};
+//Device  Segment::devices[3] = {Device(D3,D4),Device(D3,D5),Device(D3,D6)};
 #else
 Device Segment::devices[3] = {Device(D3,D4),Device(D5,D6),Device(RX,TX)};
 #endif
@@ -41,7 +42,6 @@ Device& Segment::device() { return devices[_iam];}
 
 void	Segment::setSegment(uint8_t* data, bool colon) {
 	reverse(data);
-
 	if (colon) {
 		uint8_t dots = 0x40;
     	for(int i = 0; i < 4; ++i) {
@@ -49,7 +49,23 @@ void	Segment::setSegment(uint8_t* data, bool colon) {
 	        dots <<= 1;
 	    }
 	}
-	device().setSegments(data);
+
+    if (changed(data)) {
+        saveToCache(data);
+    	device().setSegments(data);
+    }
+}
+
+bool    Segment::changed(uint8_t* data){
+    for(int i=0;i<4;i++) 
+        if (data[i] != _data[i])
+            return true;
+    return false;
+}
+
+void    Segment::saveToCache(uint8_t* data) {
+    for(int i=0; i<4; i++)
+        _data[i] = data[i];
 }
 
 void  Segment::drawDDDD(int days) {

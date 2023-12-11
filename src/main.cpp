@@ -16,7 +16,7 @@ RTClock     *rtClock;
 OneButton   *button;
 Display     *display;
 Config      *config;
-RTTimer     timer;
+RTTimer     rtTimer;
 
 
 void timeToWedding(void) {
@@ -65,7 +65,7 @@ void loop() {
 
   if (CLOCK_TICK_1_SEC) {
     CLOCK_TICK_1_SEC = false;
-    timer.start(millis(),100);
+    rtTimer.start(millis(),100);
 
     DateTime fut(config->_future);
     DateTime cur = rtClock->now();
@@ -77,8 +77,8 @@ void loop() {
     count++;
   }
 
-  if (timer.tick(millis())) {
-    display->showTimeSpan(span,10 - timer.count());
+  if (rtTimer.tick(millis())) {
+    display->showTimeSpan(span,10 - rtTimer.count());
   }
 
 }
