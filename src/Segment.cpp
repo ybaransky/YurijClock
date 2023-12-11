@@ -1,7 +1,37 @@
 #include <Arduino.h>
+#include <RTClib.h>
 #include "Constants.h"
 #include "Segment.h"
+    
+/*
+    countdown display modes
+    "0 dd D | hh:mm |  ss u",
+    "1 dd D | hh:mm |    ss",
+    "2 dd D | hh  H | mm:ss",
+    "3 dd D | hh  H |  mm n",
+    "4   dd | hh:mm |  ss u",
+    "5   dd | hh:mm |    ss",
+    "6   dd |    hh | mm:ss",
+    "7   dd |    hh |    mm"
+*/
 
+/* 
+    countup display modes
+    "0   YYYY | MM:DD | hh:mm",
+    "1   YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
+    "2   YYYY |    MM |    DD",
+    "3     MM |    DD | hh:mm",
+    "4     MM |    DD | hh:mm",  // blinkind hh:mm colon
+    "5  MM:DD | hh:mm | ss  u",
+    "7  MM:DD | hh:mm |    ss",
+    "8  MM:DD |    hh | mm:ss",
+    "9  MM:DD |    hh |    mm",
+    "10    DD | hh:mm | ss  u",
+    "11    DD | hh:mm |    ss",
+    "12    DD |    hh | mm:ss",
+    "13    DD |    hh |    mm",
+*/
+ 
 /*
 *************************************************************************
 *  Segment Statics
@@ -28,6 +58,7 @@ Device Segment::devices[3] = {Device(D3,D4),Device(D5,D6),Device(RX,TX)};
 */
 
 Digits::Digits(int value) { set(value); }
+Digits::Digits(uint8_t value) { set(int(value)); }
 void  Digits::set(int value) {
     d1    = value%10; value = value/10;
     d10   = value%10; value = value/10;
@@ -45,8 +76,15 @@ void  Digits::set(int value) {
 *************************************************************************
 */
 
-void    Segment::init(int iam) { _iam = iam; _format = 0; }
-void    Segment::setFormat(int format) { _format = format; }
+void    Segment::init(int iam, int* formats) { 
+    _iam = iam; 
+    for(int i=0; i<N_DISPLAY_MODES; i++) _formats[i] = formats[i]; 
+}
+
+void    Segment::setFormat(int displayMode, int format ) {
+     _formats[displayMode] = format;
+}
+
 Device& Segment::device() { return devices[_iam];}
 
 void	Segment::setSegment(bool colon) {
@@ -74,90 +112,60 @@ void    Segment::saveToCache(void) {
     for(int i=0; i<4; i++) _cache[i] = _data[i];
 }
 
-void  Segment::drawDDDD(int days) {
-    /*
-    countdown display modes
-    "0 dd D | hh:mm |  ss u",
-    "1 dd D | hh:mm |    ss",
-    "2 dd D | hh  H | mm:ss",
-    "3 dd D | hh  H |  mm n",
-    "4   dd | hh:mm |  ss u",
-    "5   dd | hh:mm |    ss",
-    "6   dd |    hh | mm:ss",
-    "7   dd |    hh |    mm"
-    */
-    Digits digit(days);
-    bool showLetter = (_format < 4);
+void  Segment::drawDDDD(TimeSpan ts) {
+    Digits  days(ts.days());
+    int     format = _formats[DISPLAY_COUNTDOWN];
+    bool    showD = (format < 4);
 
-    if (digit.d1000) {
-        encode(digit.c1000, digit.c100, digit.c10, digit.c1);
+    if (days.d1000) {
+        encode(days.c1000, days.c100, days.c10, days.c1);
     } else {
-        if (showLetter) {
-            if (digit.d100)     encode(digit.c100, digit.c10, digit.c1, dchar);
-            else if (digit.d10) encode( digit.c10,  digit.c1,    space, dchar);
-            else                encode(     space,  digit.c1,    space, dchar); 
+        if (showD) {
+            if (days.d100)     encode(days.c100, days.c10, days.c1, dchar);
+            else if (days.d10) encode( days.c10,  days.c1,    space, dchar);
+            else               encode(     space,  days.c1,    space, dchar); 
         } else {
-            if (digit.d100)     encode(space, digit.c100, digit.c10, digit.c1);
-            else if (digit.d10) encode(space,      space, digit.c10, digit.c1);
-            else                encode(space,      space,     space, digit.c1); 
+            if (days.d100)     encode(space, days.c100, days.c10, days.c1);
+            else if (days.d10) encode(space,     space, days.c10, days.c1);
+            else               encode(space,     space,    space, days.c1); 
         }
     }
     setSegment();
 };
-void  Segment::drawHHMM(int aHours, int aMinutes) {
-    /*
-    countdown display modes
-    "0 dd D | hh:mm |  ss u",
-    "1 dd D | hh:mm |    ss",
-    "2 dd D | hh  H | mm:ss",
-    "3 dd D | hh  H |    mm",
-    "4   dd | hh:mm |  ss u",
-    "5   dd | hh:mm |    ss",
-    "6   dd |    hh | mm:ss",
-    "7   dd |    hh |    mm"
-    */
-    Digits  hours(aHours);
-    Digits  mins(aMinutes);
-    bool    showHoursH    = (_format==2) || (_format==3);
-    bool    showHours     = (_format==6) || (_format==7);
-    bool    showHoursMins = (_format==0) || (_format==1) || (_format==4) || (_format==5);
+
+void  Segment::drawHHMM(TimeSpan ts) {
+    Digits  hours(ts.hours());
+    Digits  mins(ts.minutes());
+    int     format = _formats[DISPLAY_COUNTDOWN];
+    bool    showHoursH    = (format==2) || (format==3);
+    bool    showHours     = (format==6) || (format==7);
+    bool    showHoursMins = (format==0) || (format==1) || (format==4) || (format==5);
     bool    colon = showHoursMins;
 
 	if (showHoursMins) {
-        if (hours.d100) encode(hours.c10, hours.c1, mins.c10, mins.c1);
-        else            encode(    space, hours.c1, mins.c10, mins.c1);
+        if (hours.d10) encode(hours.c10, hours.c1, mins.c10, mins.c1);
+        else           encode(    space, hours.c1, mins.c10, mins.c1);
     } else if (showHoursH) {
-        if (hours.d100) encode(hours.c10, hours.c1, space, hchar);
-        else            encode(    space, hours.c1, space, hchar);
+        if (hours.d10) encode(hours.c10, hours.c1, space, hchar);
+        else           encode(    space, hours.c1, space, hchar);
     } else if (showHours) {
-        if (hours.d100) encode(space, space, hours.c10, hours.c1);
-        else            encode(space, space,     space, hours.c1);
+        if (hours.d10) encode(space, space, hours.c10, hours.c1);
+        else           encode(space, space,     space, hours.c1);
     }
     setSegment(colon);
 };
 
-void  Segment::drawSSUU(int minutes, int seconds, uint8_t ms100) {
-    /*
-    countdown display modes
-    "0 dd D | hh:mm |  ss u",
-    "1 dd D | hh:mm |    ss",
-    "2 dd D | hh  H | mm:ss",
-    "3 dd D | hh  H |  mm N",
-    "4   dd | hh:mm |  ss u",
-    "5   dd | hh:mm |    ss",
-    "6   dd |    hh | mm:ss",
-    "7   dd |    hh |    mm"
-    */
-	// hours
-    Digits mins(minutes);
-    Digits secs(seconds);
-    Digits ms(ms100);
-    bool showMillis   = (_format==0) || (_format==4);
-    bool showSecs     = (_format==1) || (_format==5);
-    bool showMinsN    = (_format==3);
-    bool showMins     = (_format==7);
-    bool showMinsSecs = (_format==2) || (_format==6);
-    bool colon = showMinsSecs;
+void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100) {
+    Digits  mins(ts.minutes());
+    Digits  secs(ts.seconds());
+    Digits  ms(ms100);
+    int     format = _formats[DISPLAY_COUNTDOWN];
+    bool    showMillis   = (format==0) || (format==4);
+    bool    showSecs     = (format==1) || (format==5);
+    bool    showMinsN    = (format==3);
+    bool    showMins     = (format==7);
+    bool    showMinsSecs = (format==2) || (format==6);
+    bool    colon = showMinsSecs;
 
     if (showMillis) {
         if (secs.d10) encode(secs.c10, secs.c1, space, ms.c1);
@@ -174,6 +182,124 @@ void  Segment::drawSSUU(int minutes, int seconds, uint8_t ms100) {
     } else {
         if (mins.d10) encode(mins.c10, mins.c1, secs.c10, secs.c1);
         else          encode(space,    mins.c1, secs.c10, secs.c1);
+    }
+    setSegment(colon);
+};
+
+/*
+******************************************************************************************
+*/
+
+void  Segment::drawDDDD(DateTime dt) {
+    Digits  years(dt.year());
+    Digits  mons(dt.month());
+    Digits  days(dt.day());
+    int     format = _formats[DISPLAY_COUNTUP];
+    bool    showYears    = (format==0) || (format==1) || (format==2);
+    bool    showMons     = (format==3) || (format==4);
+    bool    showDays     = (format==9) || (format==10) || (format==11) || (format==12);
+    bool    showMonsDays = (format==5) || (format==6) || (format==7) || (format==8);
+    bool    colon = showMonsDays;
+
+    if (showYears) {
+        encode(years.c1000, years.c100, years.c10, years.c1);
+    } else if (showMons) {
+        if (mons.c10) encode(space, space, mons.c10, mons.c1);
+        else          encode(space, space,    space, mons.c1);
+    } else if (showDays) {
+        if (days.c10) encode(space, space, days.c10, days.c1);
+        else          encode(space, space,   space, days.c1);
+    } else {
+        if (mons.c10) encode(mons.c10, mons.c1, days.c10, days.c1);
+        else          encode(   space, mons.c1, days.c10, days.c1);
+    }
+    setSegment(colon);
+};
+
+/* 
+    countup display modes
+    "0   YYYY | MM:DD | hh:mm",
+    "1   YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
+    "2   YYYY |    MM |    DD",
+    "3     MM |    DD | hh:mm",
+    "4     MM |    DD | hh:mm",  // blinkind hh:mm colon
+    "5  MM:DD | hh:mm | ss  u",
+    "6  MM:DD | hh:mm |    ss",
+    "7  MM:DD |    hh | mm:ss",
+    "8  MM:DD |    hh |    mm",
+    "9     DD | hh:mm | ss  u",
+    "10    DD | hh:mm |    ss",
+    "11    DD |    hh | mm:ss",
+    "12    DD |    hh |    mm",
+*/
+ 
+void  Segment::drawHHMM(DateTime dt) {
+    Digits  mons(dt.month());
+    Digits  days(dt.day());
+    Digits  hours(dt.hour());
+    Digits  mins(dt.minute());
+    int     format = _formats[DISPLAY_COUNTUP];
+    bool    showMonsDays  =  (format==0) || (format==1);
+    bool    showMons      =  (format==2);
+    bool    showDays      =  (format==3) || (format==4);
+    bool    showHoursMins =  (format==5) || (format==6) || (format==9) || (format==10);
+    bool    showHours     =  (format==7) || (format==8) || (format==11) || (format==12);
+    bool    colon = showMonsDays || showHoursMins;
+
+    if (showMonsDays) {
+        if (mons.d10)  encode(mons.c10, mons.c1, days.c10, days.c1);
+        else           encode(   space, mons.c1, days.c10, days.c1);
+    } else if (showMons) {
+        if (mons.c10) encode(space, space, mons.c10, mons.c1);
+        else          encode(space, space,    space, mons.c1);
+    } else if (showDays) {
+        if (days.c10) encode(space, space, days.c10, days.c1);
+        else          encode(space, space,    space, days.c1);
+    } else if (showHoursMins) {
+        if (hours.d10)  encode(hours.c10, hours.c1, mins.c10, mins.c1);
+        else            encode(    space, hours.c1, mins.c10, mins.c1);
+    } else if (showHours) {
+        if (hours.c10) encode(space, space, hours.c10, hours.c1);
+        else           encode(space, space,     space, hours.c1);
+    }
+    setSegment(colon);
+};
+ 
+void  Segment::drawSSUU(DateTime dt, uint8_t ms100) {
+    Digits  days(dt.day());
+    Digits  hours(dt.hour());
+    Digits  mins(dt.minute());
+    Digits  secs(dt.second());
+    Digits  ms(ms100);
+
+    int     format = _formats[DISPLAY_COUNTUP];
+    bool    showHoursMins = (format==0) || (format==1) || (format==3) || (format==4);
+    bool    showDays      = (format==2);
+    bool    showMillis    = (format==5) || (format==9);
+    bool    showSecs      = (format==6) || (format==10);
+    bool    showMinsSecs  = (format==7) || (format==11);
+    bool    showMins      = (format==12);
+    bool    blinking      = (format==1) || (format==4);
+    bool    colon = showHoursMins || showMinsSecs;
+
+    if (showHoursMins) {
+        if (hours.d10) encode(hours.c10, hours.c1, mins.c10, mins.c1);
+        else           encode(    space, hours.c1, mins.c10, mins.c1);
+    } else if (showDays) {
+        if (days.c10) encode(space, space, days.c10, days.c1);
+        else          encode(space, space,    space, days.c1);
+    } else if (showMillis) {
+        if (secs.c10) encode(secs.c10, secs.c1, space, ms.c1);
+        else          encode(   space, secs.c1, space, ms.c1);
+    } else if (showSecs) {
+        if (secs.c10) encode(space, space, secs.c10, secs.c1);
+        else          encode(space, space,    space, secs.c1);
+    } else if (showMinsSecs) {
+        if (mins.d10)  encode(mins.c10, mins.c1, secs.c10, secs.c1);
+        else           encode(   space, mins.c1, secs.c10, secs.c1);
+    } else if (showMins) {
+        if (mins.c10) encode(space, space, mins.c10, mins.c1);
+        else          encode(space, space,    space, mins.c1);
     }
     setSegment(colon);
 };

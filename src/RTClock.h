@@ -1,5 +1,5 @@
 #pragma once
-#include <RTCLib.h>
+#include <RTClib.h>
 
 class RTClock {
     RTC_DS3231* _rtcHard;

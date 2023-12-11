@@ -69,22 +69,20 @@ void loop() {
     DateTime cur = rtClock->now();
     span = TimeSpan(fut.unixtime() - cur.unixtime());
 
-    display->showTimeSpan(span);
+    display->showTime(span);
     if (1==count%10)
       timeToWedding();
     count++;
   }
   if (rtTimer.tick(millis())) {
-    display->showTimeSpan(span,10 - rtTimer.count());
+    display->showTime(span,10 - rtTimer.count());
   }
 
   if (SINGLE_BUTTON_CLICK) {
     SINGLE_BUTTON_CLICK = false;
     P("single button click ");
-    PV("  current "); PV(format); 
     format++;
-    format = format%7;
-    PV("  new "); PVL(format);
+    format = format % 7;
     display->setFormat(format);
   }
 

@@ -20,9 +20,11 @@ Display* initDisplay(void) {
 }
 
 void Display::init(void) {
-
+  _displayMode = DISPLAY_COUNTDOWN;
+  for(int i=0;i < N_DISPLAY_MODES; i++) 
+    _formats[i] = 0;
   for(int i=0; i < N_SEGMENTS; i++) {
-    _segments[i].init(i);
+    _segments[i].init(i,_formats);
     _segments[i].device().clear();
   }
 }
@@ -32,11 +34,23 @@ void  Display::setBrightness(uint8_t brightness, bool on) {
     _segments[i].device().setBrightness(brightness, on);
 }
 
+void  Display::setFormat(int displayMode, int format) {
+    _displayMode = displayMode;
+    setFormat(format);
+}
+
 void  Display::setFormat(int format) {
-    if (_format == format) return;
-    _format = format;
-    for(int i=0;i<3;i++) _segments[i].setFormat(format);
-    refresh(_cache._ts, _cache._ms100);
+    PV(_displayMode); SPACE; 
+    PV(_formats[_displayMode]); SPACE;
+    PV(format);
+    PL("");
+    _formats[_displayMode] = format;
+    for(int i=0;i<3;i++) 
+      _segments[i].setFormat(_displayMode, format);
+    if (_displayMode==DISPLAY_COUNTDOWN)
+      refresh(_cache._ts, _cache._ms100);
+    else
+      refresh(_cache._dt, _cache._ms100);
 }
 
 void Display::test(void) {
@@ -63,20 +77,24 @@ void Display::showInteger(int32_t ival) {
       _segments[i].device().showNumberDec(parts[i],false);
 }
 
-void Display::showTimeSpan(TimeSpan ts, uint8_t ms100) {
+void Display::showTime(TimeSpan ts, uint8_t ms100) {
   // for future use
   _cache.save(ts,ms100);
   refresh(ts,ms100);
-  _segments[DDDD].drawDDDD(ts.days());
-  _segments[HHMM].drawHHMM(ts.hours(),ts.minutes());
-  _segments[SSUU].drawSSUU(ts.minutes(), ts.seconds(),ms100);
 }
 
 void Display::refresh(TimeSpan ts, uint8_t ms100) {
-  _segments[DDDD].drawDDDD(ts.days());
-  _segments[HHMM].drawHHMM(ts.hours(),ts.minutes());
-  _segments[SSUU].drawSSUU(ts.minutes(), ts.seconds(),ms100);
+  _segments[DDDD].drawDDDD(ts);
+  _segments[HHMM].drawHHMM(ts);
+  _segments[SSUU].drawSSUU(ts,ms100);
 }
+
+void  Display::refresh(DateTime dt, uint8_t ms100) {
+  _segments[DDDD].drawDDDD(dt);
+  _segments[HHMM].drawHHMM(dt);
+  _segments[SSUU].drawSSUU(dt,ms100);
+}
+
 #ifdef COUNTDOWN_DISPLAY
 /*
  * ******************************************************************
