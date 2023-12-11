@@ -4,17 +4,15 @@
 #include "Constants.h"
 #include "Debug.h"
 
-// push button
-void oneButtonSingleClick() { PV(millis()); SPACE; PL("singleClick"); }
-void oneButtonDoubleClick() { PV(millis()); SPACE; PL("doubleClick"); }
-void oneButtonLongPress()   { 
-    extern RTClock* rtClock;
-    DateTime dt(F(__DATE__),F(__TIME__));
-    PV(millis()); SPACE; P("longPress"); 
-    P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
-    rtClock->adjust(dt);
-}
 
+volatile bool   SINGLE_BUTTON_CLICK = false;
+volatile bool   DOUBLE_BUTTON_CLICK = false;
+volatile bool   LONG_BUTTON_CLICK   = false;
+
+// push button
+void oneButtonSingleClick() { SINGLE_BUTTON_CLICK = true; }
+void oneButtonDoubleClick() { DOUBLE_BUTTON_CLICK = true; }
+void oneButtonLongPress()   { LONG_BUTTON_CLICK = true; }
 OneButton* initOneButton() {
     OneButton* btn = new OneButton(ONEBUTTON_PIN,false,false);  // D8
     btn->attachClick(oneButtonSingleClick);

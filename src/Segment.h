@@ -8,6 +8,10 @@ struct Digits {
     int d100;
     int d10;
     int d1;
+    char c1000;
+    char c100;
+    char c10;
+    char c1;
     Digits(int value=0);
     void  set(int);
 };
@@ -15,10 +19,13 @@ struct Digits {
 class Segment {
 
     static Device   devices[3];
-    static int      format;
     static uint8_t  asciEncoding[96];
+    static char     space;
+    static char     dchar;
+    static char     hchar;
+    static char     nchar;
 
-    void     reverse(uint8_t*);
+    void     encode(char, char, char, char);
     uint8_t  encodeChar(char);
     uint8_t  encodeDigit(uint8_t);
 
@@ -28,13 +35,16 @@ class Segment {
 
         void    drawDDDD(int);
         void    drawHHMM(int,int);
-        void    drawSSUU(int,uint8_t);
-        void    drawSSUU(int);
+        void    drawSSUU(int,int,uint8_t);
 
-        bool    changed(uint8_t*);
-        void    saveToCache(uint8_t*);
-        void    setSegment(uint8_t* data,bool colon=false);
+        bool    changed();
+        void    reverse();
+        void    saveToCache();
+        void    setFormat(int);
+        void    setSegment(bool colon=false);
 
-        int     _iam;
-        byte    _data[4]; 
+        int         _iam;
+        int         _format;
+        uint8_t     _data[4]; 
+        uint8_t     _cache[4]; 
 };

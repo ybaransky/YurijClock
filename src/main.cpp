@@ -21,9 +21,7 @@ RTTimer     rtTimer;
 
 void timeToWedding(void) {
   DateTime fut(config->_future);
-  DateTime cur = rtClock->now();
-  PVL(fut.timestamp(DateTime::TIMESTAMP_FULL)) ;
-  PVL(cur.timestamp(DateTime::TIMESTAMP_FULL));
+  DateTime cur(rtClock->now());
   TimeSpan span(fut.unixtime() - cur.unixtime());
   P("from now till then "); 
   P("days=");  P(span.days()); SPACE;
@@ -52,13 +50,13 @@ void setup() {
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
 
-  timeToWedding();
   display->test();
 }
 
 void loop() {
   static int count = 0;
   static TimeSpan span;
+  static int format = 0;
 
   button->tick();
   rtClock->tick();
@@ -71,14 +69,34 @@ void loop() {
     DateTime cur = rtClock->now();
     span = TimeSpan(fut.unixtime() - cur.unixtime());
 
-    display->showTimeSpan(span,0);
+    display->showTimeSpan(span);
     if (1==count%10)
       timeToWedding();
     count++;
   }
-
   if (rtTimer.tick(millis())) {
     display->showTimeSpan(span,10 - rtTimer.count());
   }
 
+  if (SINGLE_BUTTON_CLICK) {
+    SINGLE_BUTTON_CLICK = false;
+    P("single button click ");
+    PV("  current "); PV(format); 
+    format++;
+    format = format%7;
+    PV("  new "); PVL(format);
+    display->setFormat(format);
+  }
+
+  if (DOUBLE_BUTTON_CLICK) {
+    DOUBLE_BUTTON_CLICK = false;
+    PL("double button click");
+  }
+
+  if (LONG_BUTTON_CLICK) {
+    LONG_BUTTON_CLICK = false;
+    DateTime dt(F(__DATE__),F(__TIME__));
+    P("longPress"); P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
+    rtClock->adjust(dt);
+  }
 }

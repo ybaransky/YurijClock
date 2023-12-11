@@ -9,22 +9,30 @@
 #define SEGMENT_OFF       false
 #define SEGMENT_COLON     0x40
 class Display {
-   public:
+  struct Cache {
+    TimeSpan  _ts;
+    uint8_t   _ms100;
+    void      save(TimeSpan ts, uint8_t ms100) { _ts=ts; _ms100 = ms100;}
+  };
+
+  public:
     void    init(void);
     void    test(void);
 
-    void    enable(bool);
+    void    setFormat(int);
     void    setBrightness(uint8_t brightness,bool on=true);
     void    showInteger(int32_t);
-    void    showTimeSpan(TimeSpan);
-    void    showTimeSpan(TimeSpan,uint8_t);
+    void    showTimeSpan(TimeSpan,uint8_t=0);
+    void    refresh(TimeSpan,uint8_t);
 
   private:
-    void      toTimeArray(TimeSpan ts);
     Segment   _segments[N_SEGMENTS];
     int       _times[N_ELEMENTS];   // DAYS,HOURS,MINUTES,SECONDS,MILLIS
     char      _message[13];
     int       _format;
+
+    // cache
+    Cache     _cache;
 };
 
 extern Display* initDisplay(void);

@@ -32,6 +32,13 @@ void  Display::setBrightness(uint8_t brightness, bool on) {
     _segments[i].device().setBrightness(brightness, on);
 }
 
+void  Display::setFormat(int format) {
+    if (_format == format) return;
+    _format = format;
+    for(int i=0;i<3;i++) _segments[i].setFormat(format);
+    refresh(_cache._ts, _cache._ms100);
+}
+
 void Display::test(void) {
   int values[] = {0000,1111,2222};
   bool zeroPad = true;
@@ -55,38 +62,21 @@ void Display::showInteger(int32_t ival) {
     for(int i=0; i<3; i++)
       _segments[i].device().showNumberDec(parts[i],false);
 }
-  /*
-     display modes
-   "dd D | hh:mm |  ss.u",
-   "dd D | hh:mm |    ss",
-   "dd D | hh  H | mm:ss",
-   "dd D | hh  H |  mm N",
-   "  dd | hh:mm |  ss.u",
-   "  dd | hh:mm |    ss",
-   "  dd |    hh | mm:ss",
-   "  dd |    hh |    mm"
-   */
-
-void Display::toTimeArray(TimeSpan ts) {
-  _times[MILLIS] = 0;
-  _times[SECONDS] = ts.seconds();
-  _times[MINUTES] = ts.minutes();
-  _times[HOURS]   = ts.hours();
-  _times[DAYS]    = ts.days();
-}
-
-void Display::showTimeSpan(TimeSpan ts) {
-  _segments[DDDD].drawDDDD(ts.days());
-  _segments[HHMM].drawHHMM(ts.hours(),ts.minutes());
-  _segments[SSUU].drawSSUU(ts.seconds());
-}
 
 void Display::showTimeSpan(TimeSpan ts, uint8_t ms100) {
+  // for future use
+  _cache.save(ts,ms100);
+  refresh(ts,ms100);
   _segments[DDDD].drawDDDD(ts.days());
   _segments[HHMM].drawHHMM(ts.hours(),ts.minutes());
-  _segments[SSUU].drawSSUU(ts.seconds(),ms100);
+  _segments[SSUU].drawSSUU(ts.minutes(), ts.seconds(),ms100);
 }
 
+void Display::refresh(TimeSpan ts, uint8_t ms100) {
+  _segments[DDDD].drawDDDD(ts.days());
+  _segments[HHMM].drawHHMM(ts.hours(),ts.minutes());
+  _segments[SSUU].drawSSUU(ts.minutes(), ts.seconds(),ms100);
+}
 #ifdef COUNTDOWN_DISPLAY
 /*
  * ******************************************************************

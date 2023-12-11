@@ -8,7 +8,11 @@
 *************************************************************************
 */
 
-int     Segment::format = 1; 
+char    Segment::space = ' '; 
+char    Segment::dchar = 'd';
+char    Segment::hchar = 'h';
+char    Segment::nchar = 'n';
+
 #define COMMON_CLK   1
 #ifdef COMMON_CLK
 Device  Segment::devices[3] = {Device(D3,D6),Device(D3,D5),Device(D3,D4)};
@@ -29,6 +33,10 @@ void  Digits::set(int value) {
     d10   = value%10; value = value/10;
     d100  = value%10; value = value/10;
     d1000 = value%10; value = value/10;
+    c1    = '0' + d1;
+    c10   = '0' + d10;
+    c100  = '0' + d100;
+    c1000 = '0' + d1000;
 }
 
 /*
@@ -37,176 +45,138 @@ void  Digits::set(int value) {
 *************************************************************************
 */
 
-void    Segment::init(int iam) { _iam = iam; }
+void    Segment::init(int iam) { _iam = iam; _format = 0; }
+void    Segment::setFormat(int format) { _format = format; }
 Device& Segment::device() { return devices[_iam];}
 
-void	Segment::setSegment(uint8_t* data, bool colon) {
-	reverse(data);
+void	Segment::setSegment(bool colon) {
+	reverse();
 	if (colon) {
 		uint8_t dots = 0x40;
     	for(int i = 0; i < 4; ++i) {
-	        data[i] |= (dots & 0x80);
+	        _data[i] |= (dots & 0x80);
 	        dots <<= 1;
 	    }
 	}
-
-    if (changed(data)) {
-        saveToCache(data);
-    	device().setSegments(data);
+    if (changed()) {
+        saveToCache();
+    	device().setSegments(_data);
     }
 }
 
-bool    Segment::changed(uint8_t* data){
+bool    Segment::changed(void) {
     for(int i=0;i<4;i++) 
-        if (data[i] != _data[i])
-            return true;
+        if (_data[i] != _cache[i]) return true;
     return false;
 }
 
-void    Segment::saveToCache(uint8_t* data) {
-    for(int i=0; i<4; i++)
-        _data[i] = data[i];
+void    Segment::saveToCache(void) {
+    for(int i=0; i<4; i++) _cache[i] = _data[i];
 }
 
 void  Segment::drawDDDD(int days) {
     /*
-    display modes
-    "dd D | hh:mm |  ss u",
-    "dd D | hh:mm |    ss",
-    "dd D | hh  H | mm:ss",
-    "dd D | hh  H |  mm N",
-    "  dd | hh:mm |  ss u",
-    "  dd | hh:mm |    ss",
-    "  dd |    hh | mm:ss",
-    "  dd |    hh |    mm"
+    countdown display modes
+    "0 dd D | hh:mm |  ss u",
+    "1 dd D | hh:mm |    ss",
+    "2 dd D | hh  H | mm:ss",
+    "3 dd D | hh  H |  mm n",
+    "4   dd | hh:mm |  ss u",
+    "5   dd | hh:mm |    ss",
+    "6   dd |    hh | mm:ss",
+    "7   dd |    hh |    mm"
     */
-    uint8_t data[4];
-    Digits digits(days);
+    Digits digit(days);
+    bool showLetter = (_format < 4);
 
-    if (digits.d1000) {
-        data[3] = encodeDigit(digits.d1000);
-        data[2] = encodeDigit(digits.d100);
-        data[1] = encodeDigit(digits.d10);
-        data[0] = encodeDigit(digits.d1);
-    } else if (digits.d100) {
-        data[3] = encodeDigit(digits.d100);
-        data[2] = encodeDigit(digits.d10);
-        data[1] = encodeDigit(digits.d1);
-        data[0] = encodeChar('d');
-    } else if (digits.d10) {
-        data[3] = encodeDigit(digits.d10);
-        data[2] = encodeDigit(digits.d1);
-        data[1] = encodeChar(' ');
-        data[0] = encodeChar('d');
+    if (digit.d1000) {
+        encode(digit.c1000, digit.c100, digit.c10, digit.c1);
     } else {
-        data[3] = encodeChar(' ');
-        data[2] = encodeDigit(digits.d1);
-        data[1] = encodeChar(' ');
-        data[0] = encodeChar('d');
+        if (showLetter) {
+            if (digit.d100)     encode(digit.c100, digit.c10, digit.c1, dchar);
+            else if (digit.d10) encode( digit.c10,  digit.c1,    space, dchar);
+            else                encode(     space,  digit.c1,    space, dchar); 
+        } else {
+            if (digit.d100)     encode(space, digit.c100, digit.c10, digit.c1);
+            else if (digit.d10) encode(space,      space, digit.c10, digit.c1);
+            else                encode(space,      space,     space, digit.c1); 
+        }
     }
-    setSegment(data);
+    setSegment();
 };
-
-void  Segment::drawHHMM(int hours, int minutes) {
+void  Segment::drawHHMM(int aHours, int aMinutes) {
     /*
-    display modes
-    "dd D | hh:mm |  ss u",
-    "dd D | hh:mm |    ss",
-    "dd D | hh  H | mm:ss",
-    "dd D | hh  H |  mm N",
-    "  dd | hh:mm |  ss u",
-    "  dd | hh:mm |    ss",
-    "  dd |    hh | mm:ss",
-    "  dd |    hh |    mm"
+    countdown display modes
+    "0 dd D | hh:mm |  ss u",
+    "1 dd D | hh:mm |    ss",
+    "2 dd D | hh  H | mm:ss",
+    "3 dd D | hh  H |    mm",
+    "4   dd | hh:mm |  ss u",
+    "5   dd | hh:mm |    ss",
+    "6   dd |    hh | mm:ss",
+    "7   dd |    hh |    mm"
     */
-    uint8_t data[4];
-    Digits digits(hours);
+    Digits  hours(aHours);
+    Digits  mins(aMinutes);
+    bool    showHoursH    = (_format==2) || (_format==3);
+    bool    showHours     = (_format==6) || (_format==7);
+    bool    showHoursMins = (_format==0) || (_format==1) || (_format==4) || (_format==5);
+    bool    colon = showHoursMins;
 
-	// hours
-    if (digits.d10) {
-        data[3] = encodeDigit(digits.d10);
-        data[2] = encodeDigit(digits.d1);
-    } else if (digits.d1) {
-        data[3] = encodeDigit(' ');
-        data[2] = encodeDigit(digits.d1);
-	} else {
-        data[3] = encodeDigit(0);
-        data[2] = encodeDigit(0);
-	}
-
-    digits.set(minutes);
-	if (digits.d10) {
-        data[1] = encodeDigit(digits.d10);
-        data[0] = encodeDigit(digits.d1);
-    } else {
-        data[1] = encodeDigit(0);
-        data[0] = encodeDigit(digits.d1);
+	if (showHoursMins) {
+        if (hours.d100) encode(hours.c10, hours.c1, mins.c10, mins.c1);
+        else            encode(    space, hours.c1, mins.c10, mins.c1);
+    } else if (showHoursH) {
+        if (hours.d100) encode(hours.c10, hours.c1, space, hchar);
+        else            encode(    space, hours.c1, space, hchar);
+    } else if (showHours) {
+        if (hours.d100) encode(space, space, hours.c10, hours.c1);
+        else            encode(space, space,     space, hours.c1);
     }
-    setSegment(data,true);
+    setSegment(colon);
 };
 
-void  Segment::drawSSUU(int seconds) {
+void  Segment::drawSSUU(int minutes, int seconds, uint8_t ms100) {
     /*
-    display modes
-    "dd D | hh:mm |  ss u",
-    "dd D | hh:mm |    ss",
-    "dd D | hh  H | mm:ss",
-    "dd D | hh  H |  mm N",
-    "  dd | hh:mm |  ss u",
-    "  dd | hh:mm |    ss",
-    "  dd |    hh | mm:ss",
-    "  dd |    hh |    mm"
+    countdown display modes
+    "0 dd D | hh:mm |  ss u",
+    "1 dd D | hh:mm |    ss",
+    "2 dd D | hh  H | mm:ss",
+    "3 dd D | hh  H |  mm N",
+    "4   dd | hh:mm |  ss u",
+    "5   dd | hh:mm |    ss",
+    "6   dd |    hh | mm:ss",
+    "7   dd |    hh |    mm"
     */
-    uint8_t data[4];
-
 	// hours
-    Digits digits(seconds);
-    if (digits.d10) {
-        data[3] = encodeChar(' ');
-        data[2] = encodeChar(' ');
-        data[1] = encodeDigit(digits.d10);
-        data[0] = encodeDigit(digits.d1);
+    Digits mins(minutes);
+    Digits secs(seconds);
+    Digits ms(ms100);
+    bool showMillis   = (_format==0) || (_format==4);
+    bool showSecs     = (_format==1) || (_format==5);
+    bool showMinsN    = (_format==3);
+    bool showMins     = (_format==7);
+    bool showMinsSecs = (_format==2) || (_format==6);
+    bool colon = showMinsSecs;
+
+    if (showMillis) {
+        if (secs.d10) encode(secs.c10, secs.c1, space, ms.c1);
+        else          encode(space,    secs.c1, space, ms.c1);
+    } else if (showSecs) {
+        if (secs.d10) encode(space, space, secs.c10, secs.c1);
+        else          encode(space, space, space,    secs.c1);
+    } else if (showMinsN) {
+        if (mins.d10) encode(mins.c10, mins.c1, space, nchar);
+        else          encode(space,    mins.c1, space, nchar);
+    } else if (showMins) {
+        if (mins.d10) encode(space, space, mins.c10, mins.c1);
+        else          encode(space, space, space,    mins.c1);
     } else {
-        data[3] = encodeChar(' ');
-        data[2] = encodeChar(' ');
-        data[1] = encodeChar(' ');
-        data[0] = encodeDigit(digits.d1);
-	}
-    setSegment(data);
+        if (mins.d10) encode(mins.c10, mins.c1, secs.c10, secs.c1);
+        else          encode(space,    mins.c1, secs.c10, secs.c1);
+    }
+    setSegment(colon);
 };
-
-void  Segment::drawSSUU(int seconds,uint8_t ms100) {
-    /*
-    display modes
-    "dd D | hh:mm |  ss u",
-    "dd D | hh:mm |    ss",
-    "dd D | hh  H | mm:ss",
-    "dd D | hh  H |  mm N",
-    "  dd | hh:mm |  ss u",
-    "  dd | hh:mm |    ss",
-    "  dd |    hh | mm:ss",
-    "  dd |    hh |    mm"
-    */
-    uint8_t data[4];
-	char seperator=' ';
-
-	// hours
-    Digits digits(seconds);
-    if (digits.d10) {
-        data[3] = encodeDigit(digits.d10);
-        data[2] = encodeDigit(digits.d1);
-        data[1] = encodeChar(seperator);
-        data[0] = encodeDigit(ms100);
-    } else {
-        data[3] = encodeChar(' ');
-        data[2] = encodeDigit(digits.d1);
-        data[1] = encodeChar(seperator);
-        data[0] = encodeDigit(ms100);
-	}
-    setSegment(data);
-};
-
-
 
 /*
 *************************************************************************
@@ -335,8 +305,15 @@ uint8_t Segment::encodeChar(char c) {
    return asciEncoding[c-32];
 }
 
-void	Segment::reverse(uint8_t* data) {
+void	Segment::reverse(void) {
 	uint8_t tmp[4];
-	for(int i=0;i<4;i++) tmp[3-i] = data[i];
-	for(int i=0;i<4;i++) data[i] = tmp[i];
+	for(int i=0;i<4;i++) tmp[3-i] = _data[i];
+	for(int i=0;i<4;i++) _data[i] = tmp[i];
+}
+
+void  Segment::encode(char c3, char c2, char c1, char c0) {
+    _data[3] = encodeChar(c3);
+    _data[2] = encodeChar(c2);
+    _data[1] = encodeChar(c1);
+    _data[0] = encodeChar(c0);
 }
