@@ -27,5 +27,4 @@ class RTTimer {
         uint32_t _start;
 };
 
-extern volatile bool    CLOCK_TICK_1_SEC;
 extern RTClock*         initRTClock(void);

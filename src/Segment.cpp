@@ -21,7 +21,7 @@
     "1   YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
     "2   YYYY |    MM |    DD",
     "3     MM |    DD | hh:mm",
-    "4     MM |    DD | hh:mm",  // blinkind hh:mm colon
+    "4     MM |    DD | hh:mm",  // blinking hh:mm colon
     "5  MM:DD | hh:mm | ss  u",
     "6  MM:DD | hh:mm |    ss",
     "7  MM:DD |    hh | mm:ss",
@@ -52,48 +52,8 @@ Device Segment::devices[3] = {Device(D3,D4),Device(D5,D6),Device(RX,TX)};
 #endif
 
 /*
-*************************************************************************
-*  Blinker Class
-*************************************************************************
+Blinking is handled by just looking at the eveness of the seoncds
 */
-
-void    Blinker::init(void) {
-    _enabled = false;
-    _justDisabled = false;
-}
-void    Blinker::enabled(bool enable) {
-    if (enable) {
-        if (_enabled) return;   // already enabled
-        // turning this on initially
-        _enabled = enable;
-        _state = _enabled;
-        _lastTime = 0;  // this forces a blink
-        _justDisabled = false;
-    } else {
-        if (!_enabled) return;  // already disabled
-        _justDisabled = true;
-    }
-}
-
-bool    Blinker::blink(void) {
-    if (_enabled) {
-        ulong now = millis();
-        if ((now - _lastTime) > 1000) {
-            _lastTime = now;
-            _state = !_state;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool    Blinker::justDisabled(void) {
-    if (_justDisabled) {
-        _justDisabled = false;
-        return true;
-    }
-    return false;
-}
 
 /*
 *************************************************************************
@@ -121,21 +81,23 @@ void  Digits::set(int value) {
 */
 
 Device& Segment::device() { return devices[_iam];}
-void    Segment::init(int iam, int* formats) { 
+void    Segment::init(int iam, int* modes) { 
     _iam = iam; 
-    _blinkingColon.init();
-    for(int i=0; i<N_DISPLAY_MODES; i++) 
-        _formats[i] = formats[i]; 
+    _mode = 0;
+    for(int i=0;i<N_MODES;i++) _formats[i] = modes[i];
 }
 
 void    Segment::setBrightness(uint8_t brightness, bool on) {
     _brightness = brightness;
-    device().setBrightness(brightness,on);
+    device().setBrightness(_brightness,on);
 }
 
-void    Segment::setFormat(int format, int displayMode) {
-    _formats[displayMode] = format;
+void    Segment::setMode(int mode) { _mode = mode; }
+void    Segment::setFormat(int format) { 
+    PV(_iam); SPACE; PV(_mode); SPACE; PVL(format);
+    _formats[_mode] = format; 
 }
+
 bool    Segment::changed(void) {
     for(int i=0; i < N_SEGMENT_DIGITS; i++) 
         if (_data[i] != _cache[i]) return true;
@@ -149,7 +111,7 @@ void    Segment::saveToCache(void) {
 
 void  Segment::drawDDDD(TimeSpan ts) {
     Digits  days(ts.days());
-    int     format = _formats[DISPLAY_COUNTDOWN];
+    int     format = _formats[MODE_COUNTDOWN];
     bool    showD = (format < 4);
 
     if (days.d1000) {
@@ -171,7 +133,7 @@ void  Segment::drawDDDD(TimeSpan ts) {
 void  Segment::drawHHMM(TimeSpan ts) {
     Digits  hours(ts.hours());
     Digits  mins(ts.minutes());
-    int     format = _formats[DISPLAY_COUNTDOWN];
+    int     format = _formats[MODE_COUNTDOWN];
     bool    showHoursH    = (format==2) || (format==3);
     bool    showHours     = (format==6) || (format==7);
     bool    showHoursMins = (format==0) || (format==1) || (format==4) || (format==5);
@@ -194,14 +156,13 @@ void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100) {
     Digits  mins(ts.minutes());
     Digits  secs(ts.seconds());
     Digits  ms(ms100);
-    int     format = _formats[DISPLAY_COUNTDOWN];
+    int     format = _formats[MODE_COUNTDOWN];
     bool    showMillis   = (format==0) || (format==4);
     bool    showSecs     = (format==1) || (format==5);
     bool    showMinsN    = (format==3);
     bool    showMins     = (format==7);
     bool    showMinsSecs = (format==2) || (format==6);
     bool    colon = showMinsSecs;
-    _blinkingColon.enabled(false);
 
     if (showMillis) {
         if (secs.d10) encode(secs.c10, secs.c1, space, ms.c1);
@@ -230,7 +191,7 @@ void  Segment::drawDDDD(DateTime dt) {
     Digits  years(dt.year());
     Digits  mons(dt.month());
     Digits  days(dt.day());
-    int     format       = _formats[DISPLAY_COUNTUP];
+    int     format       = _formats[MODE_COUNTUP];
     bool    showYears    = (format==0) || (format==1) || (format==2);
     bool    showMons     = (format==3) || (format==4);
     bool    showDays     = (format==9) || (format==10) || (format==11) || (format==12);
@@ -257,7 +218,7 @@ void  Segment::drawHHMM(DateTime dt) {
     Digits  days(dt.day());
     Digits  hours(dt.hour());
     Digits  mins(dt.minute());
-    int     format = _formats[DISPLAY_COUNTUP];
+    int     format        = _formats[MODE_COUNTUP];
     bool    showMonsDays  =  (format==0) || (format==1);
     bool    showMons      =  (format==2);
     bool    showDays      =  (format==3) || (format==4);
@@ -291,7 +252,7 @@ void  Segment::drawSSUU(DateTime dt, uint8_t ms100) {
     Digits  secs(dt.second());
     Digits  ms(ms100);
 
-    int     format = _formats[DISPLAY_COUNTUP];
+    int     format        = _formats[MODE_COUNTUP];
     bool    showHoursMins = (format==0) || (format==1) || (format==3) || (format==4);
     bool    showDays      = (format==2);
     bool    showMillis    = (format==5) || (format==9);
@@ -299,7 +260,10 @@ void  Segment::drawSSUU(DateTime dt, uint8_t ms100) {
     bool    showMinsSecs  = (format==7) || (format==11);
     bool    showMins      = (format==12);
     bool    colon         = showHoursMins || showMinsSecs;
-    _blinkingColon.enabled((format==1) || (format==4));
+    bool    blinking      = (format==1) || (format==4);
+    if (blinking) {
+        colon = dt.second() % 2;
+    }
 
     if (showHoursMins) {
         if (hours.d10) encode(hours.c10, hours.c1, mins.c10, mins.c1);
@@ -327,15 +291,6 @@ void	Segment::setSegment(bool colon) {
     bool sendToDevice = false;
  
 	reverse();
-
-    if (_blinkingColon.enabled()) {
-        if (_blinkingColon.blink()) {
-            sendToDevice = true;
-        }
-        colon = colon && _blinkingColon.state();
-    } else if (_blinkingColon.justDisabled()) {
-        sendToDevice = true;
-    }
 
 	if (colon) {
 		uint8_t dots = 0x40;

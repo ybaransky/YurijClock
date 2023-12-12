@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "Scheduler.h"
 #include "Button.h"
 #include "Debug.h"
 #include "Constants.h"
@@ -16,7 +17,7 @@ RTClock     *rtClock;
 OneButton   *button;
 Display     *display;
 Config      *config;
-RTTimer     rtTimer;
+RTTimer     ms100Timer;
 
 
 void timeToWedding(void) {
@@ -39,10 +40,12 @@ void setup() {
 
   PL("starting");
   
-  config  = initConfig();
-  button  = initOneButton();
-  display = initDisplay();
-  rtClock = initRTClock();
+  initScheduler();
+
+  config    = initConfig();
+  button    = initOneButton();
+  display   = initDisplay();
+  rtClock   = initRTClock();
 
   Serial.flush();
   delay(1000);
@@ -54,54 +57,55 @@ void setup() {
 }
 
 void loop() {
+  bool updateDisplay = false;
   static TimeSpan span;
-  static DateTime curr;
-  static int format = 0;
-  static int mode = 0;
+  static DateTime current;
 
   button->tick();
   rtClock->tick();
 
-  curr = rtClock->now();
-  if (CLOCK_TICK_1_SEC) {
-    CLOCK_TICK_1_SEC = false;
-    rtTimer.start(millis(),100);
-    switch (display->getDisplayMode()) {
-      case DISPLAY_COUNTDOWN :
-        span = TimeSpan(DateTime(config->_future).unixtime() - curr.unixtime());
-        display->showTime(span);
-        break;
-      case DISPLAY_COUNTUP:
-        display->showTime(curr);
-        break;
-    }
+  if (EVENT_CLOCK_1_SEC) {
+    EVENT_CLOCK_1_SEC = false;
+    updateDisplay = true;
+    current = rtClock->now();  // only grab full date on second tick
+    ms100Timer.start(millis(),100);
+  }
+  
+  if (EVENT_ALARM_5_SEC) {
+    ;
   }
 
-  if (rtTimer.tick(millis())) {
-    switch (display->getDisplayMode()) {
-      case DISPLAY_COUNTDOWN:
-        display->showTime(span,10 - rtTimer.count());
+  if (ms100Timer.tick(millis())) {
+    updateDisplay = true;
+  }
+
+  if (updateDisplay) {
+    int count = ms100Timer.count();  // number of 100ms that passed
+    switch (display->getMode()) {
+      case MODE_COUNTDOWN :
+        span = TimeSpan(DateTime(config->_future).unixtime() - current.unixtime());
+        display->showTime(span, count ? count : 10-count);
         break;
-      case DISPLAY_COUNTUP:
-        display->showTime(curr,rtTimer.count());
+      case MODE_COUNTUP:
+        display->showTime(current, count);
         break;
+      case MODE_MESSAGE:
+        display->showMessage(config->_message, current.second() % 2);
     }
   }
 
   if (SINGLE_BUTTON_CLICK) {
     SINGLE_BUTTON_CLICK = false;
-    P("single button click ");
-    format++;
-    format = format % 7;
-    display->setFormat(format);
+    PL("single button click ");
+    display->incFormat();
+    display->refresh();
   }
 
   if (DOUBLE_BUTTON_CLICK) {
     DOUBLE_BUTTON_CLICK = false;
-    PL("double button click");
-    mode++;
-    mode = mode%2;
-    display->setDisplayMode(mode);
+    PL("double button click ");
+    display->incMode();
+    display->refresh();
   }
 
   if (LONG_BUTTON_CLICK) {

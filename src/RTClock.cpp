@@ -1,19 +1,7 @@
-#include <TaskScheduler.h>
+#include "Scheduler.h"
 #include "RTClock.h"
 #include "Debug.h"
 #include "Constants.h"
-
-volatile bool   CLOCK_TICK_1_SEC = false;
-
-/*
-**********************************************************************
-******************* Scheudler ****************************************
-**********************************************************************
-*/
-
-Scheduler*  scheduler=nullptr;      // only used if the rtc is broken
-void        schedulerCB1sec(void) { CLOCK_TICK_1_SEC = true;}
-Task        schedulerTask1sec(1000, TASK_FOREVER, &schedulerCB1sec);
 
 /*
 **********************************************************************
@@ -21,7 +9,7 @@ Task        schedulerTask1sec(1000, TASK_FOREVER, &schedulerCB1sec);
 **********************************************************************
 */
 
-void IRAM_ATTR  clockCB1sec(void) { CLOCK_TICK_1_SEC = true; }
+void IRAM_ATTR  clockCB1sec(void) { EVENT_CLOCK_1_SEC = true; }
         
 RTClock*    initRTClock(void) {
     RTClock* rtc = new RTClock();
@@ -50,9 +38,6 @@ void RTClock::init(void) {
         PL("Couldn't find ds3231 RTC");
         delete _rtcHard;
         _rtcHard = nullptr;
-
-        scheduler = new Scheduler();
-        scheduler->init();
     }
 }
 
@@ -64,8 +49,7 @@ void RTClock::startTicking(void) {
         attachInterrupt(digitalPinToInterrupt(RTC_SQW_PIN), clockCB1sec, FALLING);
     } 
     else {
-        scheduler->addTask(schedulerTask1sec);
-        schedulerTask1sec.enable();
+        start1SecScheduler();
     }
 }
 
@@ -80,7 +64,7 @@ DateTime RTClock::now(void) {
 }
 
 void RTClock::tick(void) {
-    if (scheduler) scheduler->execute();
+    tickScheduler();
 
 }
 /*

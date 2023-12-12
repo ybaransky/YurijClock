@@ -20,8 +20,8 @@ Display* initDisplay(void) {
 }
 
 void Display::init(void) {
-  _displayMode = DISPLAY_COUNTDOWN;
-  for(int i=0;i < N_DISPLAY_MODES; i++) 
+  _mode = MODE_COUNTDOWN;
+  for(int i=0;i < N_MODES; i++) 
     _formats[i] = 0;
   for(int i=0; i < N_SEGMENTS; i++) {
     _segments[i].init(i,_formats);
@@ -34,27 +34,34 @@ void  Display::setBrightness(uint8_t brightness, bool on) {
     _segments[i].setBrightness(brightness, on);
 }
 
-int   Display::getDisplayMode(void) const {return _displayMode;}
-void  Display::setDisplayMode(int displayMode) {
-    Serial.printf("setting displayMode to %d\n",displayMode);
-    _displayMode = displayMode;
-    setSegmentModeFormat();
+int   Display::getMode(void) const {return _mode;}
+void  Display::incMode(void) {
+  int mode = getMode();
+  mode++;
+  mode = mode % 2;
+  setMode(mode);
+}
+void  Display::setMode(int mode) {
+    _mode = mode;
+    P(" setting  J mode: m="); P(_mode); P(" f="); PL(_formats[_mode]);
+    for(int i=0;i<N_SEGMENTS;i++) 
+      _segments[i].setMode(_mode);
 }
 
-int   Display::getFormat(void) const {return _formats[_displayMode];}
+int   Display::getFormat(void) const {return _formats[_mode];}
+void  Display::incFormat(void) {
+  int format = getFormat();
+  format++;
+  format = (getMode()==MODE_COUNTDOWN) ? format % 7 : format % 12; 
+  setFormat(format);
+}
 void  Display::setFormat(int format) {
-    Serial.printf("setting format to %d\n",format);
-    _formats[_displayMode] = format;
-    setSegmentModeFormat();
-}
-
-void  Display::setSegmentModeFormat(void) {
-    for(int i=0;i<N_ELEMENTS;i++) 
-      _segments[i].setFormat(_formats[_displayMode], _displayMode);
-    if (_displayMode==DISPLAY_COUNTDOWN)
-      refresh(_cache._ts, _cache._ms100);
-    else
-      refresh(_cache._dt, _cache._ms100);
+    P(" setting format: m0="); P(_mode); P(" f0="); PL(_formats[_mode]);
+    _formats[_mode] = format;
+    P(" setting format: m1="); P(_mode); P(" f1="); PL(_formats[_mode]);
+    for(int i=0;i<N_SEGMENTS;i++) 
+      _segments[i].setFormat(_formats[_mode]);
+    PL("setFormat done");
 }
 
 void Display::test(void) {
@@ -70,6 +77,10 @@ void Display::test(void) {
     on = !on;
   }
   setBrightness(BRIGHTEST);
+}
+
+void Display::showMessage(char* message, bool on) {
+
 }
 
 void Display::showInteger(int32_t ival) {
@@ -101,4 +112,11 @@ void  Display::refresh(DateTime dt, uint8_t ms100) {
   _segments[DDDD].drawDDDD(dt);
   _segments[HHMM].drawHHMM(dt);
   _segments[SSUU].drawSSUU(dt,ms100);
+}
+
+void Display::refresh(void) {
+  switch(getMode()) {
+    case MODE_COUNTDOWN :  refresh(_cache.ts(), _cache.ms()); break;
+    case MODE_COUNTUP :    refresh(_cache.dt(), _cache.ms()); break;
+  }
 }
