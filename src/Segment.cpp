@@ -23,13 +23,13 @@
     "3     MM |    DD | hh:mm",
     "4     MM |    DD | hh:mm",  // blinkind hh:mm colon
     "5  MM:DD | hh:mm | ss  u",
-    "7  MM:DD | hh:mm |    ss",
-    "8  MM:DD |    hh | mm:ss",
-    "9  MM:DD |    hh |    mm",
-    "10    DD | hh:mm | ss  u",
-    "11    DD | hh:mm |    ss",
-    "12    DD |    hh | mm:ss",
-    "13    DD |    hh |    mm",
+    "6  MM:DD | hh:mm |    ss",
+    "7  MM:DD |    hh | mm:ss",
+    "8  MM:DD |    hh |    mm",
+    "9     DD | hh:mm | ss  u",
+    "10    DD | hh:mm |    ss",
+    "11    DD |    hh | mm:ss",
+    "12    DD |    hh |    mm",
 */
  
 /*
@@ -50,6 +50,50 @@ Device  Segment::devices[3] = {Device(D3,D6),Device(D3,D5),Device(D3,D4)};
 #else
 Device Segment::devices[3] = {Device(D3,D4),Device(D5,D6),Device(RX,TX)};
 #endif
+
+/*
+*************************************************************************
+*  Blinker Class
+*************************************************************************
+*/
+
+void    Blinker::init(void) {
+    _enabled = false;
+    _justDisabled = false;
+}
+void    Blinker::enabled(bool enable) {
+    if (enable) {
+        if (_enabled) return;   // already enabled
+        // turning this on initially
+        _enabled = enable;
+        _state = _enabled;
+        _lastTime = 0;  // this forces a blink
+        _justDisabled = false;
+    } else {
+        if (!_enabled) return;  // already disabled
+        _justDisabled = true;
+    }
+}
+
+bool    Blinker::blink(void) {
+    if (_enabled) {
+        ulong now = millis();
+        if ((now - _lastTime) > 1000) {
+            _lastTime = now;
+            _state = !_state;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool    Blinker::justDisabled(void) {
+    if (_justDisabled) {
+        _justDisabled = false;
+        return true;
+    }
+    return false;
+}
 
 /*
 *************************************************************************
@@ -76,40 +120,31 @@ void  Digits::set(int value) {
 *************************************************************************
 */
 
+Device& Segment::device() { return devices[_iam];}
 void    Segment::init(int iam, int* formats) { 
     _iam = iam; 
-    for(int i=0; i<N_DISPLAY_MODES; i++) _formats[i] = formats[i]; 
+    _blinkingColon.init();
+    for(int i=0; i<N_DISPLAY_MODES; i++) 
+        _formats[i] = formats[i]; 
 }
 
-void    Segment::setFormat(int displayMode, int format ) {
-     _formats[displayMode] = format;
+void    Segment::setBrightness(uint8_t brightness, bool on) {
+    _brightness = brightness;
+    device().setBrightness(brightness,on);
 }
 
-Device& Segment::device() { return devices[_iam];}
-
-void	Segment::setSegment(bool colon) {
-	reverse();
-	if (colon) {
-		uint8_t dots = 0x40;
-    	for(int i = 0; i < 4; ++i) {
-	        _data[i] |= (dots & 0x80);
-	        dots <<= 1;
-	    }
-	}
-    if (changed()) {
-        saveToCache();
-    	device().setSegments(_data);
-    }
+void    Segment::setFormat(int format, int displayMode) {
+    _formats[displayMode] = format;
 }
-
 bool    Segment::changed(void) {
-    for(int i=0;i<4;i++) 
+    for(int i=0; i < N_SEGMENT_DIGITS; i++) 
         if (_data[i] != _cache[i]) return true;
     return false;
 }
 
 void    Segment::saveToCache(void) {
-    for(int i=0; i<4; i++) _cache[i] = _data[i];
+    for(int i=0; i<N_SEGMENT_DIGITS; i++) 
+        _cache[i] = _data[i];
 }
 
 void  Segment::drawDDDD(TimeSpan ts) {
@@ -166,6 +201,7 @@ void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100) {
     bool    showMins     = (format==7);
     bool    showMinsSecs = (format==2) || (format==6);
     bool    colon = showMinsSecs;
+    _blinkingColon.enabled(false);
 
     if (showMillis) {
         if (secs.d10) encode(secs.c10, secs.c1, space, ms.c1);
@@ -194,45 +230,28 @@ void  Segment::drawDDDD(DateTime dt) {
     Digits  years(dt.year());
     Digits  mons(dt.month());
     Digits  days(dt.day());
-    int     format = _formats[DISPLAY_COUNTUP];
+    int     format       = _formats[DISPLAY_COUNTUP];
     bool    showYears    = (format==0) || (format==1) || (format==2);
     bool    showMons     = (format==3) || (format==4);
     bool    showDays     = (format==9) || (format==10) || (format==11) || (format==12);
     bool    showMonsDays = (format==5) || (format==6) || (format==7) || (format==8);
-    bool    colon = showMonsDays;
+    bool    colon        = showMonsDays;
 
     if (showYears) {
         encode(years.c1000, years.c100, years.c10, years.c1);
     } else if (showMons) {
-        if (mons.c10) encode(space, space, mons.c10, mons.c1);
+        if (mons.d10) encode(space, space, mons.c10, mons.c1);
         else          encode(space, space,    space, mons.c1);
     } else if (showDays) {
-        if (days.c10) encode(space, space, days.c10, days.c1);
+        if (days.d10) encode(space, space, days.c10, days.c1);
         else          encode(space, space,   space, days.c1);
     } else {
-        if (mons.c10) encode(mons.c10, mons.c1, days.c10, days.c1);
+        if (mons.d10) encode(mons.c10, mons.c1, days.c10, days.c1);
         else          encode(   space, mons.c1, days.c10, days.c1);
     }
     setSegment(colon);
 };
 
-/* 
-    countup display modes
-    "0   YYYY | MM:DD | hh:mm",
-    "1   YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
-    "2   YYYY |    MM |    DD",
-    "3     MM |    DD | hh:mm",
-    "4     MM |    DD | hh:mm",  // blinkind hh:mm colon
-    "5  MM:DD | hh:mm | ss  u",
-    "6  MM:DD | hh:mm |    ss",
-    "7  MM:DD |    hh | mm:ss",
-    "8  MM:DD |    hh |    mm",
-    "9     DD | hh:mm | ss  u",
-    "10    DD | hh:mm |    ss",
-    "11    DD |    hh | mm:ss",
-    "12    DD |    hh |    mm",
-*/
- 
 void  Segment::drawHHMM(DateTime dt) {
     Digits  mons(dt.month());
     Digits  days(dt.day());
@@ -244,22 +263,22 @@ void  Segment::drawHHMM(DateTime dt) {
     bool    showDays      =  (format==3) || (format==4);
     bool    showHoursMins =  (format==5) || (format==6) || (format==9) || (format==10);
     bool    showHours     =  (format==7) || (format==8) || (format==11) || (format==12);
-    bool    colon = showMonsDays || showHoursMins;
+    bool    colon         = showMonsDays || showHoursMins;
 
     if (showMonsDays) {
         if (mons.d10)  encode(mons.c10, mons.c1, days.c10, days.c1);
         else           encode(   space, mons.c1, days.c10, days.c1);
     } else if (showMons) {
-        if (mons.c10) encode(space, space, mons.c10, mons.c1);
+        if (mons.d10) encode(space, space, mons.c10, mons.c1);
         else          encode(space, space,    space, mons.c1);
     } else if (showDays) {
-        if (days.c10) encode(space, space, days.c10, days.c1);
+        if (days.d10) encode(space, space, days.c10, days.c1);
         else          encode(space, space,    space, days.c1);
     } else if (showHoursMins) {
         if (hours.d10)  encode(hours.c10, hours.c1, mins.c10, mins.c1);
         else            encode(    space, hours.c1, mins.c10, mins.c1);
     } else if (showHours) {
-        if (hours.c10) encode(space, space, hours.c10, hours.c1);
+        if (hours.d10) encode(space, space, hours.c10, hours.c1);
         else           encode(space, space,     space, hours.c1);
     }
     setSegment(colon);
@@ -279,30 +298,62 @@ void  Segment::drawSSUU(DateTime dt, uint8_t ms100) {
     bool    showSecs      = (format==6) || (format==10);
     bool    showMinsSecs  = (format==7) || (format==11);
     bool    showMins      = (format==12);
-    bool    blinking      = (format==1) || (format==4);
-    bool    colon = showHoursMins || showMinsSecs;
+    bool    colon         = showHoursMins || showMinsSecs;
+    _blinkingColon.enabled((format==1) || (format==4));
 
     if (showHoursMins) {
         if (hours.d10) encode(hours.c10, hours.c1, mins.c10, mins.c1);
         else           encode(    space, hours.c1, mins.c10, mins.c1);
     } else if (showDays) {
-        if (days.c10) encode(space, space, days.c10, days.c1);
+        if (days.d10) encode(space, space, days.c10, days.c1);
         else          encode(space, space,    space, days.c1);
     } else if (showMillis) {
-        if (secs.c10) encode(secs.c10, secs.c1, space, ms.c1);
+        if (secs.d10) encode(secs.c10, secs.c1, space, ms.c1);
         else          encode(   space, secs.c1, space, ms.c1);
     } else if (showSecs) {
-        if (secs.c10) encode(space, space, secs.c10, secs.c1);
+        if (secs.d10) encode(space, space, secs.c10, secs.c1);
         else          encode(space, space,    space, secs.c1);
     } else if (showMinsSecs) {
         if (mins.d10)  encode(mins.c10, mins.c1, secs.c10, secs.c1);
         else           encode(   space, mins.c1, secs.c10, secs.c1);
     } else if (showMins) {
-        if (mins.c10) encode(space, space, mins.c10, mins.c1);
+        if (mins.d10) encode(space, space, mins.c10, mins.c1);
         else          encode(space, space,    space, mins.c1);
     }
     setSegment(colon);
 };
+
+void	Segment::setSegment(bool colon) {
+    bool sendToDevice = false;
+ 
+	reverse();
+
+    if (_blinkingColon.enabled()) {
+        if (_blinkingColon.blink()) {
+            sendToDevice = true;
+        }
+        colon = colon && _blinkingColon.state();
+    } else if (_blinkingColon.justDisabled()) {
+        sendToDevice = true;
+    }
+
+	if (colon) {
+		uint8_t dots = 0x40;
+    	for(int i = 0; i < N_SEGMENT_DIGITS; ++i) {
+	        _data[i] |= (dots & 0x80);
+	        dots <<= 1;
+	    }
+	}
+
+    if (changed()) {
+        saveToCache();
+        sendToDevice = true;
+    }
+
+    if (sendToDevice)
+    	device().setSegments(_data);
+}
+
 
 /*
 *************************************************************************

@@ -13,8 +13,24 @@ struct Digits {
     void  set(int);
 };
 
-class Segment {
+class Blinker {
+    public:
+        void        init(void);
+        void        enabled(bool);
+        bool        enabled(void) { return _enabled;}   
+        bool        state(void) {  return _state; }
+        bool        blink(void);
+        bool        justDisabled(void);
 
+    private:
+        bool        _enabled;
+        bool        _state;
+        bool        _justDisabled;
+        ulong       _lastTime;  // each change
+};
+
+
+class Segment {
     static Device   devices[3];
     static uint8_t  asciEncoding[96];
     static char     space;
@@ -38,14 +54,19 @@ class Segment {
         void    drawHHMM(DateTime);
         void    drawSSUU(DateTime,uint8_t);
 
+        void    setFormat(int,int);
+        void    setBrightness(uint8_t,bool);
+
+    private:
         bool    changed();
         void    reverse();
         void    saveToCache();
-        void    setFormat(int,int);
         void    setSegment(bool colon=false);
 
         int         _iam;
         int         _formats[N_DISPLAY_MODES];
         uint8_t     _data[4]; 
         uint8_t     _cache[4]; 
+        uint8_t     _brightness;
+        Blinker     _blinkingColon;
 };

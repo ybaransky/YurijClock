@@ -23,7 +23,11 @@ class Display {
     void    test(void);
 
     void    setFormat(int);
-    void    setFormat(int,int);
+    int     getFormat(void) const;
+
+    void    setDisplayMode(int);
+    int     getDisplayMode(void) const;
+
     void    showInteger(int32_t);
     void    setBrightness(uint8_t brightness,bool on=true);
 
@@ -33,6 +37,8 @@ class Display {
     void    refresh(DateTime,uint8_t);
 
   private:
+    void      setSegmentModeFormat(void);
+
     Segment   _segments[N_SEGMENTS];
     int       _times[N_ELEMENTS];   // DAYS,HOURS,MINUTES,SECONDS,MILLIS
     char      _message[13];

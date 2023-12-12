@@ -54,28 +54,38 @@ void setup() {
 }
 
 void loop() {
-  static int count = 0;
   static TimeSpan span;
+  static DateTime curr;
   static int format = 0;
+  static int mode = 0;
 
   button->tick();
   rtClock->tick();
 
+  curr = rtClock->now();
   if (CLOCK_TICK_1_SEC) {
     CLOCK_TICK_1_SEC = false;
     rtTimer.start(millis(),100);
-
-    DateTime fut(config->_future);
-    DateTime cur = rtClock->now();
-    span = TimeSpan(fut.unixtime() - cur.unixtime());
-
-    display->showTime(span);
-    if (1==count%10)
-      timeToWedding();
-    count++;
+    switch (display->getDisplayMode()) {
+      case DISPLAY_COUNTDOWN :
+        span = TimeSpan(DateTime(config->_future).unixtime() - curr.unixtime());
+        display->showTime(span);
+        break;
+      case DISPLAY_COUNTUP:
+        display->showTime(curr);
+        break;
+    }
   }
+
   if (rtTimer.tick(millis())) {
-    display->showTime(span,10 - rtTimer.count());
+    switch (display->getDisplayMode()) {
+      case DISPLAY_COUNTDOWN:
+        display->showTime(span,10 - rtTimer.count());
+        break;
+      case DISPLAY_COUNTUP:
+        display->showTime(curr,rtTimer.count());
+        break;
+    }
   }
 
   if (SINGLE_BUTTON_CLICK) {
@@ -89,6 +99,9 @@ void loop() {
   if (DOUBLE_BUTTON_CLICK) {
     DOUBLE_BUTTON_CLICK = false;
     PL("double button click");
+    mode++;
+    mode = mode%2;
+    display->setDisplayMode(mode);
   }
 
   if (LONG_BUTTON_CLICK) {
