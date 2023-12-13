@@ -43,7 +43,6 @@ void  Display::incMode(void) {
 }
 void  Display::setMode(int mode) {
     _mode = mode;
-    P(" setting  J mode: m="); P(_mode); P(" f="); PL(_formats[_mode]);
     for(int i=0;i<N_SEGMENTS;i++) 
       _segments[i].setMode(_mode);
 }
@@ -56,12 +55,9 @@ void  Display::incFormat(void) {
   setFormat(format);
 }
 void  Display::setFormat(int format) {
-    P(" setting format: m0="); P(_mode); P(" f0="); PL(_formats[_mode]);
     _formats[_mode] = format;
-    P(" setting format: m1="); P(_mode); P(" f1="); PL(_formats[_mode]);
     for(int i=0;i<N_SEGMENTS;i++) 
       _segments[i].setFormat(_formats[_mode]);
-    PL("setFormat done");
 }
 
 void Display::test(void) {

@@ -94,7 +94,6 @@ void    Segment::setBrightness(uint8_t brightness, bool on) {
 
 void    Segment::setMode(int mode) { _mode = mode; }
 void    Segment::setFormat(int format) { 
-    PV(_iam); SPACE; PV(_mode); SPACE; PVL(format);
     _formats[_mode] = format; 
 }
 

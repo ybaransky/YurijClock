@@ -7,11 +7,15 @@ class RTClock {
     
     public:
         void        init(void);
-        DateTime    now(void);
+        bool        startTicking(void);
         void        adjust(const DateTime&);
+        bool        noRealTime(void);
+        bool        lostPower(void);
 
-        void        startTicking(void);
-        void        tick();
+        DateTime    now(void);
+
+    private:
+        bool        _lostPower;
 };
 
 class RTTimer {

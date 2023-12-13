@@ -1,4 +1,3 @@
-#include "Scheduler.h"
 #include "RTClock.h"
 #include "Debug.h"
 #include "Constants.h"
@@ -9,16 +8,19 @@
 **********************************************************************
 */
 
-void IRAM_ATTR  clockCB1sec(void) { EVENT_CLOCK_1_SEC = true; }
+void IRAM_ATTR  clockCB1sec(void) { 
+    extern volatile bool EVENT_CLOCK_1_SEC;
+    EVENT_CLOCK_1_SEC = true;
+}
         
 RTClock*    initRTClock(void) {
     RTClock* rtc = new RTClock();
     rtc->init();
-    rtc->startTicking();
     return rtc;
 }
 
 void RTClock::init(void) {
+    _lostPower = false;
     _rtcSoft = new RTC_Millis();
     _rtcSoft->begin(DateTime(F(__DATE__),F(__TIME__)));
 
@@ -33,6 +35,7 @@ void RTClock::init(void) {
             // This line sets the RTC with an explicit date & time, for example to set
             // January 21, 2014 at 3am you would call:
             // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+            _lostPower = true;
         }
     } else {
         PL("Couldn't find ds3231 RTC");
@@ -41,16 +44,15 @@ void RTClock::init(void) {
     }
 }
 
-void RTClock::startTicking(void) {
+bool RTClock::startTicking(void) {
     if (_rtcHard) {
         pinMode(RTC_SQW_PIN,INPUT);
         digitalWrite(RTC_SQW_PIN,HIGH);
         _rtcHard->writeSqwPinMode(DS3231_SquareWave1Hz);
         attachInterrupt(digitalPinToInterrupt(RTC_SQW_PIN), clockCB1sec, FALLING);
+        return true;
     } 
-    else {
-        start1SecScheduler();
-    }
+    return false;
 }
 
 void RTClock::adjust(const DateTime& dt) {
@@ -63,10 +65,9 @@ DateTime RTClock::now(void) {
     return _rtcHard ? _rtcHard->now() : _rtcSoft->now();
 }
 
-void RTClock::tick(void) {
-    tickScheduler();
+bool RTClock::lostPower(void) { return _lostPower; }
+bool RTClock::noRealTime(void) { return _rtcHard == nullptr; }
 
-}
 /*
 **********************************************************************
 ******************** RTTimer ****************************************
