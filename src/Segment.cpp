@@ -81,20 +81,13 @@ void  Digits::set(int value) {
 */
 
 Device& Segment::device() { return devices[_iam];}
-void    Segment::init(int iam, int* modes) { 
+void    Segment::init(int iam) { 
     _iam = iam; 
-    _mode = 0;
-    for(int i=0;i<N_MODES;i++) _formats[i] = modes[i];
 }
 
 void    Segment::setBrightness(uint8_t brightness, bool on) {
     _brightness = brightness;
     device().setBrightness(_brightness,on);
-}
-
-void    Segment::setMode(int mode) { _mode = mode; }
-void    Segment::setFormat(int format) { 
-    _formats[_mode] = format; 
 }
 
 bool    Segment::changed(void) {
@@ -108,9 +101,8 @@ void    Segment::saveToCache(void) {
         _cache[i] = _data[i];
 }
 
-void  Segment::drawDDDD(TimeSpan ts) {
+void  Segment::drawDDDD(TimeSpan ts,int format) {
     Digits  days(ts.days());
-    int     format = _formats[MODE_COUNTDOWN];
     bool    showD = (format < 4);
 
     if (days.d1000) {
@@ -129,10 +121,9 @@ void  Segment::drawDDDD(TimeSpan ts) {
     setSegment();
 };
 
-void  Segment::drawHHMM(TimeSpan ts) {
+void  Segment::drawHHMM(TimeSpan ts,int format) {
     Digits  hours(ts.hours());
     Digits  mins(ts.minutes());
-    int     format = _formats[MODE_COUNTDOWN];
     bool    showHoursH    = (format==2) || (format==3);
     bool    showHours     = (format==6) || (format==7);
     bool    showHoursMins = (format==0) || (format==1) || (format==4) || (format==5);
@@ -151,11 +142,10 @@ void  Segment::drawHHMM(TimeSpan ts) {
     setSegment(colon);
 };
 
-void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100) {
+void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100, int format) {
     Digits  mins(ts.minutes());
     Digits  secs(ts.seconds());
     Digits  ms(ms100);
-    int     format = _formats[MODE_COUNTDOWN];
     bool    showMillis   = (format==0) || (format==4);
     bool    showSecs     = (format==1) || (format==5);
     bool    showMinsN    = (format==3);
@@ -186,11 +176,10 @@ void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100) {
 ******************************************************************************************
 */
 
-void  Segment::drawDDDD(DateTime dt) {
+void  Segment::drawDDDD(DateTime dt,int format) {
     Digits  years(dt.year());
     Digits  mons(dt.month());
     Digits  days(dt.day());
-    int     format       = _formats[MODE_COUNTUP];
     bool    showYears    = (format==0) || (format==1) || (format==2);
     bool    showMons     = (format==3) || (format==4);
     bool    showDays     = (format==9) || (format==10) || (format==11) || (format==12);
@@ -212,12 +201,11 @@ void  Segment::drawDDDD(DateTime dt) {
     setSegment(colon);
 };
 
-void  Segment::drawHHMM(DateTime dt) {
+void  Segment::drawHHMM(DateTime dt,int format) {
     Digits  mons(dt.month());
     Digits  days(dt.day());
     Digits  hours(dt.hour());
     Digits  mins(dt.minute());
-    int     format        = _formats[MODE_COUNTUP];
     bool    showMonsDays  =  (format==0) || (format==1);
     bool    showMons      =  (format==2);
     bool    showDays      =  (format==3) || (format==4);
@@ -244,14 +232,13 @@ void  Segment::drawHHMM(DateTime dt) {
     setSegment(colon);
 };
  
-void  Segment::drawSSUU(DateTime dt, uint8_t ms100) {
+void  Segment::drawSSUU(DateTime dt, uint8_t ms100, int format) {
     Digits  days(dt.day());
     Digits  hours(dt.hour());
     Digits  mins(dt.minute());
     Digits  secs(dt.second());
     Digits  ms(ms100);
 
-    int     format        = _formats[MODE_COUNTUP];
     bool    showHoursMins = (format==0) || (format==1) || (format==3) || (format==4);
     bool    showDays      = (format==2);
     bool    showMillis    = (format==5) || (format==9);

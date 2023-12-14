@@ -26,19 +26,17 @@ class Segment {
     uint8_t  encodeDigit(uint8_t);
 
     public:
-        void    init(int iam, int* _format);
+        void    init(int iam);
         Device& device(void);
 
-        void    drawDDDD(TimeSpan);
-        void    drawHHMM(TimeSpan);
-        void    drawSSUU(TimeSpan,uint8_t);
+        void    drawDDDD(TimeSpan,int);
+        void    drawHHMM(TimeSpan,int);
+        void    drawSSUU(TimeSpan,uint8_t,int);
 
-        void    drawDDDD(DateTime);
-        void    drawHHMM(DateTime);
-        void    drawSSUU(DateTime,uint8_t);
+        void    drawDDDD(DateTime,int);
+        void    drawHHMM(DateTime,int);
+        void    drawSSUU(DateTime,uint8_t,int);
 
-        void    setMode(int);
-        void    setFormat(int);
         void    setBrightness(uint8_t,bool);
 
     private:
@@ -48,8 +46,6 @@ class Segment {
         void    setSegment(bool colon=false);
 
         int         _iam;
-        int         _mode;  // display modes
-        int         _formats[N_MODES];
         
         uint8_t     _data[4]; 
         uint8_t     _cache[4]; 

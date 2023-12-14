@@ -24,7 +24,7 @@ void Display::init(void) {
   for(int i=0;i < N_MODES; i++) 
     _formats[i] = 0;
   for(int i=0; i < N_SEGMENTS; i++) {
-    _segments[i].init(i,_formats);
+    _segments[i].init(i);
     _segments[i].device().clear();
   }
 }
@@ -43,8 +43,6 @@ void  Display::incMode(void) {
 }
 void  Display::setMode(int mode) {
     _mode = mode;
-    for(int i=0;i<N_SEGMENTS;i++) 
-      _segments[i].setMode(_mode);
 }
 
 int   Display::getFormat(void) const {return _formats[_mode];}
@@ -56,8 +54,6 @@ void  Display::incFormat(void) {
 }
 void  Display::setFormat(int format) {
     _formats[_mode] = format;
-    for(int i=0;i<N_SEGMENTS;i++) 
-      _segments[i].setFormat(_formats[_mode]);
 }
 
 void Display::test(void) {
@@ -99,15 +95,17 @@ void Display::showTime(DateTime dt, uint8_t ms100) {
 }
 
 void Display::refresh(TimeSpan ts, uint8_t ms100) {
-  _segments[DDDD].drawDDDD(ts);
-  _segments[HHMM].drawHHMM(ts);
-  _segments[SSUU].drawSSUU(ts,ms100);
+  int format = getFormat();
+  _segments[DDDD].drawDDDD(ts,format);
+  _segments[HHMM].drawHHMM(ts,format);
+  _segments[SSUU].drawSSUU(ts,ms100,format);
 }
 
 void  Display::refresh(DateTime dt, uint8_t ms100) {
-  _segments[DDDD].drawDDDD(dt);
-  _segments[HHMM].drawHHMM(dt);
-  _segments[SSUU].drawSSUU(dt,ms100);
+  int format = getFormat();
+  _segments[DDDD].drawDDDD(dt,format);
+  _segments[HHMM].drawHHMM(dt,format);
+  _segments[SSUU].drawSSUU(dt,ms100,format);
 }
 
 void Display::refresh(void) {
