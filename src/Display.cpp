@@ -7,9 +7,21 @@
 For some reason, I can't create the TM1637Display objects via new. 
 This needs to be understood 
 */
+
 /*
 *************************************************************************
-*  Device Class
+*  DisplayMessage Class
+*************************************************************************
+*/
+
+void DisplayMsg::set(const String& text, bool blink) {
+  _text  = text;
+  _blink = blink;
+}
+
+/*
+*************************************************************************
+*  Display Class
 *************************************************************************
 */
 
@@ -33,27 +45,26 @@ void  Display::setBrightness(uint8_t brightness, bool on) {
   for(int i=0;i<N_SEGMENTS;i++) 
     _segments[i].setBrightness(brightness, on);
 }
-
-int   Display::getMode(void) const {return _mode;}
+void  Display::setMode(int mode) { 
+  _prevMode = _mode; _mode = mode;
+    P("setting mode to "); PL(_mode);
+}
+void  Display::restoreMode(void) { 
+  _mode = _prevMode; 
+  P("restoring mode to "); PL(_mode);
+}
 void  Display::incMode(void) {
   int mode = getMode();
   mode++;
   mode = mode % 2;
   setMode(mode);
 }
-void  Display::setMode(int mode) {
-    _mode = mode;
-}
-
-int   Display::getFormat(void) const {return _formats[_mode];}
+void  Display::setFormat(int format)  {_formats[_mode] = format;}
 void  Display::incFormat(void) {
   int format = getFormat();
   format++;
   format = (getMode()==MODE_COUNTDOWN) ? format % 7 : format % 12; 
   setFormat(format);
-}
-void  Display::setFormat(int format) {
-    _formats[_mode] = format;
 }
 
 void Display::test(void) {
@@ -71,10 +82,6 @@ void Display::test(void) {
   setBrightness(BRIGHTEST);
 }
 
-void Display::showMessage(char* message, bool on) {
-
-}
-
 void Display::showInteger(int32_t ival) {
     int parts[3];
     parts[2] =  ival / 100000000;
@@ -84,33 +91,48 @@ void Display::showInteger(int32_t ival) {
       _segments[i].device().showNumberDec(parts[i],false);
 }
 
-void Display::showTime(TimeSpan ts, uint8_t ms100) {
+void Display::showTime(const TimeSpan& ts, uint8_t ms100) {
   _cache.save(ts,ms100);
   refresh(ts,ms100);
 }
 
-void Display::showTime(DateTime dt, uint8_t ms100) {
+void Display::showTime(const DateTime& dt, uint8_t ms100) {
   _cache.save(dt,ms100);
   refresh(dt,ms100);
 }
 
-void Display::refresh(TimeSpan ts, uint8_t ms100) {
+void Display::refresh(const TimeSpan& ts, uint8_t ms100) {
   int format = getFormat();
   _segments[DDDD].drawDDDD(ts,format);
   _segments[HHMM].drawHHMM(ts,format);
   _segments[SSUU].drawSSUU(ts,ms100,format);
 }
 
-void  Display::refresh(DateTime dt, uint8_t ms100) {
+void  Display::refresh(const DateTime& dt, uint8_t ms100) {
   int format = getFormat();
   _segments[DDDD].drawDDDD(dt,format);
   _segments[HHMM].drawHHMM(dt,format);
   _segments[SSUU].drawSSUU(dt,ms100,format);
 }
 
+void  Display::refresh(const DateTime& dt, const DisplayMsg& dmsg) {
+  char buffer[13];
+  snprintf(buffer,13,"%12s",dmsg.text().c_str());
+  
+  _segments[DDDD].drawText(dt,&buffer[0]);
+  _segments[HHMM].drawText(dt,&buffer[4]);
+  _segments[SSUU].drawText(dt,&buffer[8]);
+}
+
 void Display::refresh(void) {
   switch(getMode()) {
     case MODE_COUNTDOWN :  refresh(_cache.ts(), _cache.ms()); break;
     case MODE_COUNTUP :    refresh(_cache.dt(), _cache.ms()); break;
+    case MODE_MESSAGE :    refresh(_cache.dt(), _cache.displayMsg()); break;
   }
+}
+
+void Display::showMessage(const DateTime& dt, const DisplayMsg& msg) {
+  _cache.save(dt,msg);
+
 }

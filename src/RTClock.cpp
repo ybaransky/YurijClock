@@ -74,8 +74,8 @@ bool RTClock::noRealTime(void) { return _rtcHard == nullptr; }
 **********************************************************************
 */
 
-void RTTimer::start(uint32_t currentMS, uint32_t intervalMS) {
-    _start = currentMS;
+void RTTimer::start(uint32_t intervalMS) {
+    _start = millis();
     _interval = intervalMS;
     _count = 0;
 }
@@ -83,15 +83,15 @@ void RTTimer::stop(void) {
     _interval = 0;
     _count = 0;
 }
-bool RTTimer::tick(uint32_t current) {
-    if (!_interval)
-        return false;
-    if ((current - _start) > _interval) {
-        _start = current;
+void RTTimer::execute() {
+    if (!_interval) return;
+    extern volatile bool EVENT_CLOCK_100_MS;
+    uint32_t now = millis();
+    if ((now - _start) > _interval) {
+        EVENT_CLOCK_100_MS = true;
+        _start = now;
         _count++;
-        return true;
     }
-    return false;
 }
 
 uint32_t RTTimer::count(void) {

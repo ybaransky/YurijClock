@@ -20,9 +20,9 @@ class RTClock {
 
 class RTTimer {
     public:
-        void        start(uint32_t, uint32_t interval);
+        void        start(uint32_t interval);
         void        stop(void);
-        bool        tick(uint32_t);
+        void        execute(void);
         uint32_t    count(void); 
 
     private:

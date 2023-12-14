@@ -6,33 +6,23 @@
 #include "RTClock.h"
 #include "Display.h"
 #include "Config.h"
-
-class ClockError {
-  public:
-      void  set(const char*);
-      void  clear(void);
-      bool  error(void);
-      const char* msg(void);
-  private:
-      char  _msg[13];
-      bool  _flag;
-};
 /*
 **********************************************************************
 ******************** Globals *****************************************
 **********************************************************************
 */
 
-Scheduler   *scheduler;
-RTClock     *rtClock;   
-OneButton   *button;
-Display     *display;
-Config      *config;
-RTTimer     ms100Timer;
-ClockError  clkError;
+Scheduler       *scheduler;
+RTClock         *rtClock;   
+OneButton       *button;
+Display         *display;
+Config          *config;
+RTTimer         msTimer;
+DisplayMsg      message;
 
-volatile bool EVENT_CLOCK_1_SEC = false;
-volatile bool EVENT_ALARM_5_SEC = false;
+volatile bool EVENT_CLOCK_1_SEC  = false;
+volatile bool EVENT_CLOCK_100_MS = false;
+volatile bool EVENT_ALARM_5_SEC  = false;
 
 void schedulerCB1sec(void) { EVENT_CLOCK_1_SEC = true;}
 Task clock1sec(1000, TASK_FOREVER, &schedulerCB1sec);
@@ -47,21 +37,6 @@ Scheduler* initScheduler(void) {
   sch->addTask(clock1sec);
   return sch;
 }
-
-void ClockError::set(const char *msg) {
-  strncpy(_msg,msg,sizeof(char)*13);
-  _flag = true;
-  alarm5sec.enable();
-}
-
-const char* ClockError::msg(void)   { return _msg;}
-bool        ClockError::error(void) { return _flag;}
-void        ClockError::clear(void) { 
-  _flag = false;
-  alarm5sec.disable();
-}
-
-
 void setup() {
   // Initialize serial port
   Serial.begin(9600);
@@ -82,7 +57,7 @@ void setup() {
   if (!rtClock->startTicking()) 
     clock1sec.enable();
   if (rtClock->lostPower()) {
-    clkError.set("LostPwr");
+    message.set("LostPwr",true);
   }
 
   Serial.flush();
@@ -101,29 +76,33 @@ void loop() {
 
   button->tick();
   scheduler->execute();
+  msTimer.execute();
 
   if (EVENT_CLOCK_1_SEC) {
     EVENT_CLOCK_1_SEC = false;
     updateDisplay = true;
     current = rtClock->now();  // only grab full date on second tick
-    ms100Timer.start(millis(),100);
+    msTimer.start(100);
     if (current.second()%10==0) {
       PVL(current.second());
     }
   }
+ 
+  if (EVENT_CLOCK_100_MS) {
+    EVENT_CLOCK_100_MS = false;
+    updateDisplay = true;
+  }
   
   if (EVENT_ALARM_5_SEC) {
     EVENT_ALARM_5_SEC = false;
-    P(" Got an error:  "); PL(clkError.msg()); 
-    clkError.clear();
-  }
-
-  if (ms100Timer.tick(millis())) {
+    P(" Got an error:  "); PL(message.text()); 
+    alarm5sec.disable();
+    display->restoreMode();
     updateDisplay = true;
   }
 
   if (updateDisplay) {
-    int count = ms100Timer.count();  // number of 100ms that passed
+    int count = msTimer.count();
     switch (display->getMode()) {
       case MODE_COUNTDOWN :
         span = TimeSpan(DateTime(config->_future).unixtime() - current.unixtime());
@@ -133,7 +112,8 @@ void loop() {
         display->showTime(current, count);
         break;
       case MODE_MESSAGE:
-        display->showMessage(config->_message, current.second() % 2);
+        display->showMessage(current, message);
+        break;
     }
   }
 
@@ -142,15 +122,22 @@ void loop() {
     PL("single button click ");
     display->incFormat();
     display->refresh();
-    if (display->getFormat() == 3 || display->getFormat() == 5)
-      clkError.set("test error");
+    if (display->getFormat() == 3 || display->getFormat() == 5) {
+      message.set("test error",true);
+    }
+
   }
 
   if (DOUBLE_BUTTON_CLICK) {
     DOUBLE_BUTTON_CLICK = false;
-    PL("double button click ");
+    PL("double button click setting msg for 5 secs");
+    message.set("test error",true);
+    display->setMode(MODE_MESSAGE);
+    alarm5sec.enable();
+    /*
     display->incMode();
     display->refresh();
+    */
   }
 
   if (LONG_BUTTON_CLICK) {

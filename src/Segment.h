@@ -29,14 +29,15 @@ class Segment {
         void    init(int iam);
         Device& device(void);
 
-        void    drawDDDD(TimeSpan,int);
-        void    drawHHMM(TimeSpan,int);
-        void    drawSSUU(TimeSpan,uint8_t,int);
+        void    drawDDDD(const TimeSpan&, int);
+        void    drawHHMM(const TimeSpan&, int);
+        void    drawSSUU(const TimeSpan&, uint8_t, int);
 
-        void    drawDDDD(DateTime,int);
-        void    drawHHMM(DateTime,int);
-        void    drawSSUU(DateTime,uint8_t,int);
+        void    drawDDDD(const DateTime&, int);
+        void    drawHHMM(const DateTime&, int);
+        void    drawSSUU(const DateTime&, uint8_t, int);
 
+        void    drawText(const DateTime& dt, char* text, bool blinking=false);
         void    setBrightness(uint8_t,bool);
 
     private:

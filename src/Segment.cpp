@@ -101,7 +101,7 @@ void    Segment::saveToCache(void) {
         _cache[i] = _data[i];
 }
 
-void  Segment::drawDDDD(TimeSpan ts,int format) {
+void  Segment::drawDDDD(const TimeSpan& ts,int format) {
     Digits  days(ts.days());
     bool    showD = (format < 4);
 
@@ -121,7 +121,7 @@ void  Segment::drawDDDD(TimeSpan ts,int format) {
     setSegment();
 };
 
-void  Segment::drawHHMM(TimeSpan ts,int format) {
+void  Segment::drawHHMM(const TimeSpan& ts,int format) {
     Digits  hours(ts.hours());
     Digits  mins(ts.minutes());
     bool    showHoursH    = (format==2) || (format==3);
@@ -142,7 +142,7 @@ void  Segment::drawHHMM(TimeSpan ts,int format) {
     setSegment(colon);
 };
 
-void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100, int format) {
+void  Segment::drawSSUU(const TimeSpan& ts, uint8_t ms100, int format) {
     Digits  mins(ts.minutes());
     Digits  secs(ts.seconds());
     Digits  ms(ms100);
@@ -176,7 +176,7 @@ void  Segment::drawSSUU(TimeSpan ts, uint8_t ms100, int format) {
 ******************************************************************************************
 */
 
-void  Segment::drawDDDD(DateTime dt,int format) {
+void  Segment::drawDDDD(const DateTime& dt,int format) {
     Digits  years(dt.year());
     Digits  mons(dt.month());
     Digits  days(dt.day());
@@ -201,7 +201,7 @@ void  Segment::drawDDDD(DateTime dt,int format) {
     setSegment(colon);
 };
 
-void  Segment::drawHHMM(DateTime dt,int format) {
+void  Segment::drawHHMM(const DateTime& dt, int format) {
     Digits  mons(dt.month());
     Digits  days(dt.day());
     Digits  hours(dt.hour());
@@ -232,7 +232,7 @@ void  Segment::drawHHMM(DateTime dt,int format) {
     setSegment(colon);
 };
  
-void  Segment::drawSSUU(DateTime dt, uint8_t ms100, int format) {
+void  Segment::drawSSUU(const DateTime& dt, uint8_t ms100, int format) {
     Digits  days(dt.day());
     Digits  hours(dt.hour());
     Digits  mins(dt.minute());
@@ -272,6 +272,13 @@ void  Segment::drawSSUU(DateTime dt, uint8_t ms100, int format) {
     }
     setSegment(colon);
 };
+
+void  Segment::drawText(const DateTime& dt, char* text, bool blinking) {
+    bool visible = blinking ? dt.second() : true;
+    encode(text[3],text[2],text[1],text[0]);
+    device().setBrightness(_brightness,visible);
+    setSegment(false);
+}
 
 void	Segment::setSegment(bool colon) {
     bool sendToDevice = false;
