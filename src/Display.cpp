@@ -68,6 +68,7 @@ void Display::test(void) {
   bool on=true;
   for(int k=0; k < 2; k++) {
     for(int i=0;i<N_SEGMENTS;i++) {
+      P(i);SPACE;PVL(values[i]);
       _segments[i].device().setBrightness(SEGMENT_BRIGHTEST,on);
       _segments[i].device().showNumberDecEx(values[i], SEGMENT_COLON, zeroPad);
     }
@@ -87,53 +88,44 @@ void Display::showInteger(int32_t ival) {
       _segments[i].device().showNumberDec(parts[i],false);
 }
 
-void Display::showTime(const TimeSpan& ts, uint8_t ms100) {
-  _cache.save(ts,ms100);
-  refresh(ts,ms100);
-}
-
-void Display::showTime(const DateTime& dt, uint8_t ms100) {
-  _cache.save(dt,ms100);
-  refresh(dt,ms100);
-}
-
-void Display::showText(const DateTime& dt, const DisplayMsg& dmsg) {
-  _cache.save(dt,dmsg);
-  refresh(dt,dmsg);
-}
-
-void Display::refresh(const TimeSpan& ts, uint8_t ms100) {
+void Display::showCountDown(const TimeSpan& ts, uint8_t ms100) {
   int format = config->getFormat();
+  _cache.save(ts,ms100);
   _segments[DDDD].drawDDDD(ts,format);
   _segments[HHMM].drawHHMM(ts,format);
   _segments[SSUU].drawSSUU(ts,ms100,format);
 }
 
-void  Display::refresh(const DateTime& dt, uint8_t ms100) {
+void Display::showClock(const DateTime& dt, uint8_t ms100) {
   int format = config->getFormat();
+  _cache.save(dt,ms100);
   _segments[DDDD].drawDDDD(dt,format);
   _segments[HHMM].drawHHMM(dt,format);
   _segments[SSUU].drawSSUU(dt,ms100,format);
 }
 
-void  Display::refresh(const DateTime& dt, const DisplayMsg& dmsg) {
+void Display::showMessage(const DisplayMsg& dmsg, uint32_t count) {
+  _cache.save(dmsg);
+
   char buffer[13];
-  snprintf(buffer,13,"%12s",dmsg.text().c_str());
-  
-  bool visible = dmsg.isBlinking() ? dt.second() % 2 : true;
-  PV("refresh: "); SPACE; 
-  PV(visible); SPACE; 
-  PV(dmsg.isBlinking()); SPACE;
-  PL("");
-  _segments[DDDD].drawText(&buffer[0],visible);
+  snprintf(buffer,13,"%-12s",dmsg.text().c_str());
+  P("|"); P(buffer); PL("|");
+  char tmp[12];
+  memcpy(tmp,buffer,sizeof(tmp));
+  bzero(buffer,sizeof(buffer));
+  for(int i=0;i<12;i++)
+    buffer[i] = tmp[11-i];
+
+  bool visible = dmsg.isBlinking() ? count % 2 : true;
+  _segments[DDDD].drawText(&buffer[8],visible);
   _segments[HHMM].drawText(&buffer[4],visible);
-  _segments[SSUU].drawText(&buffer[8],visible);
+  _segments[SSUU].drawText(&buffer[0],visible);
 }
 
 void Display::refresh(void) {
   switch(config->getMode()) {
-    case MODE_COUNTDOWN :  refresh(_cache.ts(), _cache.ms()); break;
-    case MODE_COUNTUP :    refresh(_cache.dt(), _cache.ms()); break;
-    case MODE_MESSAGE :    refresh(_cache.dt(), _cache.displayMsg()); break;
+    case MODE_COUNTDOWN :  showCountDown(_cache.ts(), _cache.ms()); break;
+    case MODE_CLOCK :      showClock(_cache.dt(), _cache.ms()); break;
+    case MODE_MESSAGE :    showMessage(_cache.displayMsg(), 1); break;
   }
 }

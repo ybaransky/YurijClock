@@ -14,15 +14,19 @@ Config* initConfig(void) {
 }
 
 void    Config::init(void) {
-    strncpy(_future, DEFAULT_FUTURE, N_ELETS(_future));
-    strncpy(_message, DEFAULT_MESSAGE, N_ELETS(_message));
-    memset(_formats,0,sizeof(_formats));
-    _mode = MODE_COUNTDOWN;
+    _future = DEFAULT_FUTURE;
+    _text   = DEFAULT_MESSAGE;
+    _mode   = MODE_COUNTDOWN;
     _brightness = DEFAULT_BRIGHTNESS;
-
+    memset(_formats,0,sizeof(_formats));
 }
 
 int   Config::getMode(void) { return _mode;}
+void  Config::incMode(void) { 
+  int mode = getMode()+1;
+  P("changing moe to ");PVL(mode);
+  setMode(mode%3);
+}
 void  Config::setMode(int mode) { 
   _prevMode = _mode;
   _mode = mode; 
@@ -36,7 +40,8 @@ int   Config::getFormat(void) {
   int format;
   switch(_mode) {
     case MODE_COUNTDOWN : format = _formats[MODE_COUNTDOWN]; break;
-    case MODE_COUNTUP : format = _formats[MODE_COUNTUP]; break;
+    case MODE_CLOCK :     format = _formats[MODE_CLOCK]; break;
+    case MODE_MESSAGE :   format = _formats[MODE_MESSAGE]; break;
     default: format = 0; break;
   }
   return format;
@@ -45,7 +50,8 @@ int   Config::getFormat(void) {
 void  Config::setFormat(int format) { 
   switch(_mode) {
     case MODE_COUNTDOWN : _formats[MODE_COUNTDOWN] = format; break;
-    case MODE_COUNTUP :  _formats[MODE_COUNTUP] = format; break;
+    case MODE_CLOCK :     _formats[MODE_CLOCK] = format; break;
+    case MODE_MESSAGE :   _formats[MODE_MESSAGE] = format; break;
     default: break;
   }
 }
@@ -57,8 +63,11 @@ void  Config::incFormat(void) {
     case MODE_COUNTDOWN : 
       _formats[MODE_COUNTDOWN] = format % 7; 
       break;
-    case MODE_COUNTUP :  
-      _formats[MODE_COUNTUP] = format % 11; 
+    case MODE_CLOCK :  
+      _formats[MODE_CLOCK] = format % 11; 
+      break;
+    case MODE_MESSAGE :  
+      _formats[MODE_MESSAGE] = format % 2; 
       break;
     default: break;
   }
@@ -67,12 +76,17 @@ void  Config::incFormat(void) {
 uint8_t Config::getBrightness(void) { return _brightness;}
 void    Config::setBrightness(uint8_t brightness) { _brightness = brightness;}
 
+void  Config::setText(const String& text) { _text = text; }
+String& Config::getText(void) { return _text; }
+
+
 void  Config::print(void) const {
   P("config:"); 
   SPACE; PV(_mode);
   SPACE; PV(_formats[0]);
   SPACE; PV(_formats[1]);
-  SPACE; PV(_message);
+  SPACE; PV(_formats[2]);
+  SPACE; PV(_text);
   SPACE; PV(_future);
   SPACE; Serial.printf("0x%x",_brightness);
   PL("");

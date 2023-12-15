@@ -4,6 +4,7 @@
 #include "Debug.h"
 #include "Constants.h"
 #include "RTClock.h"
+#include "Timer.h"
 #include "Display.h"
 #include "Config.h"
 /*
@@ -17,23 +18,18 @@ RTClock         *rtClock;
 OneButton       *button;
 Display         *display;
 Config          *config;
-RTTimer         msTimer;
+Timer           timer100ms;
+Timer           timer500ms;
 DisplayMsg      message;
 
 volatile bool EVENT_CLOCK_1_SEC  = false;
-volatile bool EVENT_CLOCK_100_MS = false;
-volatile bool EVENT_ALARM_5_SEC  = false;
 
 void schedulerCB1sec(void) { EVENT_CLOCK_1_SEC = true;}
 Task clock1sec(1000, TASK_FOREVER, &schedulerCB1sec);
 
-void schedulerCB5sec(void) { EVENT_ALARM_5_SEC = true;}
-Task alarm5sec(5000, TASK_FOREVER, &schedulerCB5sec);
-
 Scheduler* initScheduler(void) {
   Scheduler* sch = new Scheduler();
   sch->init();
-  sch->addTask(alarm5sec);
   sch->addTask(clock1sec);
   return sch;
 }
@@ -60,6 +56,8 @@ void setup() {
     message.set("LostPwr",true);
   }
 
+  message.set(config->getText(),true);
+
   Serial.flush();
   delay(1000);
 
@@ -77,50 +75,49 @@ void loop() {
 
   button->tick();
   scheduler->execute();
-  msTimer.execute();
 
   if (EVENT_CLOCK_1_SEC) {
     EVENT_CLOCK_1_SEC = false;
+
     updateDisplay = true;
     secondTick = true;
     dt = rtClock->now();  // only grab full date on second tick
-    msTimer.start(100);
+    timer100ms.start(100);
     if (dt.second()%10==0) {
       PVL(dt.second());
       config->print();
     }
   }
  
-  if (EVENT_CLOCK_100_MS) {
-    EVENT_CLOCK_100_MS = false;
-    updateDisplay = true;
-  }
-  
-  if (EVENT_ALARM_5_SEC) {
-    EVENT_ALARM_5_SEC = false;
-    P(" Message over:  "); PL(message.text()); 
-    alarm5sec.disable();
-    config->restoreMode();
-    display->reset();
+  // just the 1/10 second timer.
+  if (timer100ms.tick()) {
     updateDisplay = true;
   }
 
+  // this is how msg blinking rate
+  if (timer500ms.tick()) {
+    updateDisplay = true;
+    if (timer500ms.finished()) {
+      timer500ms.stop();
+      config->restoreMode();
+      display->reset();
+      P(" Message over:  "); PL(message.text()); 
+    }
+  }
+
   if (updateDisplay) {
-    int count = msTimer.count();
+    int count = timer100ms.count();
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
-        ts = TimeSpan(DateTime(config->_future).unixtime() - dt.unixtime());
-        if (secondTick) {
-          Serial.printf("d=%d h=%d m=%d s=%d\n",
-            ts.days(),ts.hours(),ts.minutes(),ts.seconds());
-        }
-        display->showTime(ts, count ? count : 10-count);
+        ts = TimeSpan(DateTime(config->_future.c_str()).unixtime() - dt.unixtime());
+        display->showCountDown(ts, count ? count : 10-count);
         break;
-      case MODE_COUNTUP:
-        display->showTime(dt, count);
+      case MODE_CLOCK:
+        display->showClock(dt, count);
         break;
       case MODE_MESSAGE:
-        if (secondTick) display->showText(dt, message);
+        display->showMessage(message,
+          timer500ms.finished() ? 1: timer500ms.count());
         break;
     }
   }
@@ -135,18 +132,23 @@ void loop() {
 
   if (DOUBLE_BUTTON_CLICK) {
     DOUBLE_BUTTON_CLICK = false;
-    PL("double button click setting msg for 5 secs");
-    message.set("1234567890ab",true);
-    message.print();
-    config->setMode(MODE_MESSAGE);
-    alarm5sec.enableDelayed(5000);
+    PL("double button click");
+    config->incMode();
+    display->refresh();
     config->print();
   }
 
   if (LONG_BUTTON_CLICK) {
     LONG_BUTTON_CLICK = false;
+    message.set("Fuc You",true);
+    message.print();
+    config->setMode(MODE_MESSAGE);
+    timer500ms.start(500,8000);
+    config->print();
+    /*
     DateTime dt(F(__DATE__),F(__TIME__));
     P("longPress"); P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
     rtClock->adjust(dt);
+    */
   }
 }

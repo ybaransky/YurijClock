@@ -17,18 +17,4 @@ class RTClock {
     private:
         bool        _lostPower;
 };
-
-class RTTimer {
-    public:
-        void        start(uint32_t interval);
-        void        stop(void);
-        void        execute(void);
-        uint32_t    count(void); 
-
-    private:
-        uint32_t _count;
-        uint32_t _interval;
-        uint32_t _start;
-};
-
 extern RTClock*         initRTClock(void);

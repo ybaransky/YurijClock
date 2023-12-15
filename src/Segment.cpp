@@ -308,12 +308,13 @@ void  Segment::drawSSUU(const DateTime& dt, uint8_t ms100, int format) {
 void  Segment::drawText(char* text, bool visible) {
     encode(text[3],text[2],text[1],text[0]);
     setVisible(visible);
+/*
 //    device().setBrightness(_data._brightness,visible);
     P("drawText: ");
     Serial.printf("%d |%c%c%c%c| ",_iam,text[3],text[2],text[2],text[0]);
     PVL(_data._brightness); 
-
-    setSegment(false,true);
+*/
+    setSegment(false);
 }
 
 void	Segment::setSegment(bool colon, bool print) {

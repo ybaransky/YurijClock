@@ -67,33 +67,3 @@ DateTime RTClock::now(void) {
 
 bool RTClock::lostPower(void) { return _lostPower; }
 bool RTClock::noRealTime(void) { return _rtcHard == nullptr; }
-
-/*
-**********************************************************************
-******************** RTTimer ****************************************
-**********************************************************************
-*/
-
-void RTTimer::start(uint32_t intervalMS) {
-    _start = millis();
-    _interval = intervalMS;
-    _count = 0;
-}
-void RTTimer::stop(void) { 
-    _interval = 0;
-    _count = 0;
-}
-void RTTimer::execute() {
-    if (!_interval) return;
-    extern volatile bool EVENT_CLOCK_100_MS;
-    uint32_t now = millis();
-    if ((now - _start) > _interval) {
-        EVENT_CLOCK_100_MS = true;
-        _start = now;
-        _count++;
-    }
-}
-
-uint32_t RTTimer::count(void) {
-    return _count;
-}
