@@ -65,14 +65,15 @@ void setup() {
 
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
-
+  config->print();
   display->test();
 }
 
 void loop() {
   bool updateDisplay = false;
-  static TimeSpan span;
-  static DateTime current;
+  bool secondTick = false;
+  static TimeSpan ts;
+  static DateTime dt;
 
   button->tick();
   scheduler->execute();
@@ -81,10 +82,12 @@ void loop() {
   if (EVENT_CLOCK_1_SEC) {
     EVENT_CLOCK_1_SEC = false;
     updateDisplay = true;
-    current = rtClock->now();  // only grab full date on second tick
+    secondTick = true;
+    dt = rtClock->now();  // only grab full date on second tick
     msTimer.start(100);
-    if (current.second()%10==0) {
-      PVL(current.second());
+    if (dt.second()%10==0) {
+      PVL(dt.second());
+      config->print();
     }
   }
  
@@ -95,24 +98,29 @@ void loop() {
   
   if (EVENT_ALARM_5_SEC) {
     EVENT_ALARM_5_SEC = false;
-    P(" Got an error:  "); PL(message.text()); 
+    P(" Message over:  "); PL(message.text()); 
     alarm5sec.disable();
-    display->restoreMode();
+    config->restoreMode();
+    display->reset();
     updateDisplay = true;
   }
 
   if (updateDisplay) {
     int count = msTimer.count();
-    switch (display->getMode()) {
+    switch (config->getMode()) {
       case MODE_COUNTDOWN :
-        span = TimeSpan(DateTime(config->_future).unixtime() - current.unixtime());
-        display->showTime(span, count ? count : 10-count);
+        ts = TimeSpan(DateTime(config->_future).unixtime() - dt.unixtime());
+        if (secondTick) {
+          Serial.printf("d=%d h=%d m=%d s=%d\n",
+            ts.days(),ts.hours(),ts.minutes(),ts.seconds());
+        }
+        display->showTime(ts, count ? count : 10-count);
         break;
       case MODE_COUNTUP:
-        display->showTime(current, count);
+        display->showTime(dt, count);
         break;
       case MODE_MESSAGE:
-        display->showMessage(current, message);
+        if (secondTick) display->showText(dt, message);
         break;
     }
   }
@@ -120,24 +128,19 @@ void loop() {
   if (SINGLE_BUTTON_CLICK) {
     SINGLE_BUTTON_CLICK = false;
     PL("single button click ");
-    display->incFormat();
+    config->incFormat();
     display->refresh();
-    if (display->getFormat() == 3 || display->getFormat() == 5) {
-      message.set("test error",true);
-    }
-
+    config->print();
   }
 
   if (DOUBLE_BUTTON_CLICK) {
     DOUBLE_BUTTON_CLICK = false;
     PL("double button click setting msg for 5 secs");
-    message.set("test error",true);
-    display->setMode(MODE_MESSAGE);
-    alarm5sec.enable();
-    /*
-    display->incMode();
-    display->refresh();
-    */
+    message.set("1234567890ab",true);
+    message.print();
+    config->setMode(MODE_MESSAGE);
+    alarm5sec.enableDelayed(5000);
+    config->print();
   }
 
   if (LONG_BUTTON_CLICK) {

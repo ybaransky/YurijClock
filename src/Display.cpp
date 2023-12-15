@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "Display.h"
+#include "Config.h"
 #include "Constants.h"
 #include "Debug.h"
 /*
@@ -7,6 +8,12 @@
 For some reason, I can't create the TM1637Display objects via new. 
 This needs to be understood 
 */
+
+#define SEGMENT_BRIGHTEST 7
+#define SEGMENT_DIMMEST   1
+#define SEGMENT_ON        true
+#define SEGMENT_OFF       false
+#define SEGMENT_COLON     0x40
 
 /*
 *************************************************************************
@@ -17,6 +24,14 @@ This needs to be understood
 void DisplayMsg::set(const String& text, bool blink) {
   _text  = text;
   _blink = blink;
+  P("DisplayMsg: |"); P(_text); PL("|");
+}
+
+void  DisplayMsg::print(void) const {
+  P("DMsg:");
+  SPACE; PV(_text);
+  SPACE; PV(_blink);
+  PL("");
 }
 
 /*
@@ -32,40 +47,20 @@ Display* initDisplay(void) {
 }
 
 void Display::init(void) {
-  _mode = MODE_COUNTDOWN;
-  for(int i=0;i < N_MODES; i++) 
-    _formats[i] = 0;
-  for(int i=0; i < N_SEGMENTS; i++) {
+  for(int i=0; i < N_SEGMENTS; i++) 
     _segments[i].init(i);
-    _segments[i].device().clear();
+  reset();
+}
+
+void Display::reset(void) {
+  uint8_t brightness = config->getBrightness();
+  for(auto& segment : _segments) {
+    segment.device().clear();
+    segment.setBrightness(brightness);
+    segment.setVisible(true);
   }
 }
 
-void  Display::setBrightness(uint8_t brightness, bool on) {
-  for(int i=0;i<N_SEGMENTS;i++) 
-    _segments[i].setBrightness(brightness, on);
-}
-void  Display::setMode(int mode) { 
-  _prevMode = _mode; _mode = mode;
-    P("setting mode to "); PL(_mode);
-}
-void  Display::restoreMode(void) { 
-  _mode = _prevMode; 
-  P("restoring mode to "); PL(_mode);
-}
-void  Display::incMode(void) {
-  int mode = getMode();
-  mode++;
-  mode = mode % 2;
-  setMode(mode);
-}
-void  Display::setFormat(int format)  {_formats[_mode] = format;}
-void  Display::incFormat(void) {
-  int format = getFormat();
-  format++;
-  format = (getMode()==MODE_COUNTDOWN) ? format % 7 : format % 12; 
-  setFormat(format);
-}
 
 void Display::test(void) {
   int values[] = {0000,1111,2222};
@@ -79,7 +74,8 @@ void Display::test(void) {
     delay(250);
     on = !on;
   }
-  setBrightness(BRIGHTEST);
+  for(auto& segment : _segments)
+    segment.device().setBrightness(SEGMENT_BRIGHTEST,true);
 }
 
 void Display::showInteger(int32_t ival) {
@@ -101,15 +97,20 @@ void Display::showTime(const DateTime& dt, uint8_t ms100) {
   refresh(dt,ms100);
 }
 
+void Display::showText(const DateTime& dt, const DisplayMsg& dmsg) {
+  _cache.save(dt,dmsg);
+  refresh(dt,dmsg);
+}
+
 void Display::refresh(const TimeSpan& ts, uint8_t ms100) {
-  int format = getFormat();
+  int format = config->getFormat();
   _segments[DDDD].drawDDDD(ts,format);
   _segments[HHMM].drawHHMM(ts,format);
   _segments[SSUU].drawSSUU(ts,ms100,format);
 }
 
 void  Display::refresh(const DateTime& dt, uint8_t ms100) {
-  int format = getFormat();
+  int format = config->getFormat();
   _segments[DDDD].drawDDDD(dt,format);
   _segments[HHMM].drawHHMM(dt,format);
   _segments[SSUU].drawSSUU(dt,ms100,format);
@@ -119,20 +120,20 @@ void  Display::refresh(const DateTime& dt, const DisplayMsg& dmsg) {
   char buffer[13];
   snprintf(buffer,13,"%12s",dmsg.text().c_str());
   
-  _segments[DDDD].drawText(dt,&buffer[0]);
-  _segments[HHMM].drawText(dt,&buffer[4]);
-  _segments[SSUU].drawText(dt,&buffer[8]);
+  bool visible = dmsg.isBlinking() ? dt.second() % 2 : true;
+  PV("refresh: "); SPACE; 
+  PV(visible); SPACE; 
+  PV(dmsg.isBlinking()); SPACE;
+  PL("");
+  _segments[DDDD].drawText(&buffer[0],visible);
+  _segments[HHMM].drawText(&buffer[4],visible);
+  _segments[SSUU].drawText(&buffer[8],visible);
 }
 
 void Display::refresh(void) {
-  switch(getMode()) {
+  switch(config->getMode()) {
     case MODE_COUNTDOWN :  refresh(_cache.ts(), _cache.ms()); break;
     case MODE_COUNTUP :    refresh(_cache.dt(), _cache.ms()); break;
     case MODE_MESSAGE :    refresh(_cache.dt(), _cache.displayMsg()); break;
   }
-}
-
-void Display::showMessage(const DateTime& dt, const DisplayMsg& msg) {
-  _cache.save(dt,msg);
-
 }

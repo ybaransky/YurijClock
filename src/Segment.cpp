@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <RTClib.h>
 #include "Constants.h"
+#include "Encode.h"
 #include "Segment.h"
     
 /*
@@ -38,10 +39,10 @@
 *************************************************************************
 */
 
-char    Segment::space = ' '; 
-char    Segment::dchar = 'd';
-char    Segment::hchar = 'h';
-char    Segment::nchar = 'n';
+static char    space = ' '; 
+static char    dchar = 'd';
+static char    hchar = 'h';
+static char    nchar = 'n';
 
 #define COMMON_CLK   1
 #ifdef COMMON_CLK
@@ -76,6 +77,42 @@ void  Digits::set(int value) {
 
 /*
 *************************************************************************
+*  Segment::Cache Class
+*************************************************************************
+*/
+void  Segment::Data::init(void) {
+  _visible = true;
+  _brightness = 0;
+  memset(_buffer, 0, sizeof(_buffer));
+
+}
+void 	Segment::Data::reverse(void) {
+  uint8_t tmp[N_DIGITS_PER_SEGMENT];
+  memcpy(tmp,_buffer,sizeof(_buffer));
+  for(int i=0; i<N_DIGITS_PER_SEGMENT; i++)  
+    _buffer[i] = tmp[N_DIGITS_PER_SEGMENT-1 - i];
+}
+
+Segment::Data& Segment::Data::operator=(const Segment::Data& data) {
+  _visible = data._visible;
+  _brightness = data._brightness;
+  memcpy(_buffer,data._buffer, sizeof(_buffer));
+  return *this;
+}
+
+bool  Segment::Data::operator==(const Segment::Data& data) {
+  if (_visible != data._visible) return false;
+  if (_brightness != data._brightness) return false;
+  for(int i=0;i<4;i++)
+    if (_buffer[i] != data._buffer[i])
+      return false;
+  return true;
+}
+
+// Data  SEgment::Data::operator=(const Data&)
+
+/*
+*************************************************************************
 *  Segment Class
 *************************************************************************
 */
@@ -83,25 +120,20 @@ void  Digits::set(int value) {
 Device& Segment::device() { return devices[_iam];}
 void    Segment::init(int iam) { 
     _iam = iam; 
+    _data.init();
 }
 
-void    Segment::setBrightness(uint8_t brightness, bool on) {
-    _brightness = brightness;
-    device().setBrightness(_brightness,on);
+void    Segment::setBrightness(uint8_t brightness) {
+    _data._brightness = brightness;
+//    device().setBrightness(_data._brightness, _data._visible);
 }
 
-bool    Segment::changed(void) {
-    for(int i=0; i < N_SEGMENT_DIGITS; i++) 
-        if (_data[i] != _cache[i]) return true;
-    return false;
+void    Segment::setVisible(bool visible) {
+    _data._visible = visible;
+//    device().setBrightness(_data._brightness, _data._visible);
 }
 
-void    Segment::saveToCache(void) {
-    for(int i=0; i<N_SEGMENT_DIGITS; i++) 
-        _cache[i] = _data[i];
-}
-
-void  Segment::drawDDDD(const TimeSpan& ts,int format) {
+void  Segment::drawDDDD(const TimeSpan& ts, int format) {
     Digits  days(ts.days());
     bool    showD = (format < 4);
 
@@ -273,172 +305,45 @@ void  Segment::drawSSUU(const DateTime& dt, uint8_t ms100, int format) {
     setSegment(colon);
 };
 
-void  Segment::drawText(const DateTime& dt, char* text, bool blinking) {
-    bool visible = blinking ? dt.second() : true;
+void  Segment::drawText(char* text, bool visible) {
     encode(text[3],text[2],text[1],text[0]);
-    device().setBrightness(_brightness,visible);
-    setSegment(false);
+    setVisible(visible);
+//    device().setBrightness(_data._brightness,visible);
+    P("drawText: ");
+    Serial.printf("%d |%c%c%c%c| ",_iam,text[3],text[2],text[2],text[0]);
+    PVL(_data._brightness); 
+
+    setSegment(false,true);
 }
 
-void	Segment::setSegment(bool colon) {
-    bool sendToDevice = false;
- 
-	reverse();
-
+void	Segment::setSegment(bool colon, bool print) {
+	_data.reverse();
 	if (colon) {
 		uint8_t dots = 0x40;
-    	for(int i = 0; i < N_SEGMENT_DIGITS; ++i) {
-	        _data[i] |= (dots & 0x80);
-	        dots <<= 1;
-	    }
+  	for(int i = 0; i < N_DIGITS_PER_SEGMENT; ++i) {
+	    _data._buffer[i] |= (dots & 0x80);
+	    dots <<= 1;
+	  }
 	}
 
-    if (changed()) {
-        saveToCache();
-        sendToDevice = true;
+  if (_cache == _data) {
+    if (print) {
+      PL("setSegment: noChange");
     }
+    return;
+  }
+  if (print) {
+    PL("setSegment: Change");
+  }
 
-    if (sendToDevice)
-    	device().setSegments(_data);
-}
-
-
-/*
-*************************************************************************
-*  statics
-*************************************************************************
-*/
-
-uint8_t Segment::asciEncoding[96] = {
-  /*       a
-   *      ---
-   *  f |  g | b
-   *      ---
-   *  e |    | c
-   *      ---
-   *       d
-   * a== bit 0... g==bit7
-   */
-
-  	0b00000000, /* (space) this is 32 */
-   	0b10000110, /* ! */
-   	0b00100010, /* " */
-	0b01111110, /* # */
-    0b01101101, /* $ */
-    0b11010010, /* % */
-	0b01000110, /* & */
-	0b00100000, /* ' */
-	0b00101001, /* ( */
-	0b00001011, /* ) */
-	0b00100001, /* * */
-	0b01110000, /* + */
-	0b00010000, /* , */
-	0b01000000, /* - */
-	0b10000000, /* . */
-	0b01010010, /* / */
-	0b00111111, /* 0 */
-	0b00000110, /* 1 */
-	0b01011011, /* 2 */
-	0b01001111, /* 3 */
-	0b01100110, /* 4 */
-	0b01101101, /* 5 */
-	0b01111101, /* 6 */
-	0b00000111, /* 7 */
-	0b01111111, /* 8 */
-	0b01101111, /* 9 */
-	0b00001001, /* : */
-	0b00001101, /* ; */
-	0b01100001, /* < */
-	0b01001000, /* = */
-	0b01000011, /* > */
-	0b11010011, /* ? */
-	0b01011111, /* @ */
-	0b01110111, /* A */
-	0b01111100, /* B */
-	0b00111001, /* C */
-	0b01011110, /* D */
-	0b01111001, /* E */
-	0b01110001, /* F */
-	0b00111101, /* G */
-	0b01110110, /* H */
-	0b00110000, /* I */
-	0b00011110, /* J */
-	0b01110101, /* K */
-	0b00111000, /* L */
-	0b00010101, /* M */
-	0b00110111, /* N */
-	0b00111111, /* O */
-	0b01110011, /* P */
-	0b01101011, /* Q */
-	0b00110011, /* R */
-	0b01101101, /* S */
-	0b01111000, /* T */
-	0b00111110, /* U */
-	0b00111110, /* V */
-	0b00101010, /* W */
-	0b01110110, /* X */
-	0b01101110, /* Y */
-	0b01011011, /* Z */
-	0b00111001, /* [ */
-	0b01100100, /* \ */
-	0b00001111, /* ] */
-	0b00100011, /* ^ */
-	0b00001000, /* _ */
-	0b00000010, /* ` */
-	0b01011111, /* a */
-	0b01111100, /* b */
-	0b01011000, /* c */
-	0b01011110, /* d */
-	0b01111011, /* e */
-	0b01110001, /* f */
-	0b01101111, /* g */
-	0b01110100, /* h */
-	0b00010000, /* i */
-	0b00001100, /* j */
-	0b01110101, /* k */
-	0b00110000, /* l */
-	0b00010100, /* m */
-	0b01010100, /* n */
-	0b01011100, /* o */
-	0b01110011, /* p */
-	0b01100111, /* q */
-	0b01010000, /* r */
-	0b01101101, /* s */
-	0b01111000, /* t */
-	0b00011100, /* u */
-	0b00011100, /* v */
-	0b00010100, /* w */
-	0b01110110, /* x */
-	0b01101110, /* y */
-	0b01011011, /* z */
-	0b01000110, /* { */
-	0b00110000, /* | */
-	0b01110000, /* } */
-	0b00000001, /* ~ */
-	0b00000000, /* (del) */
-};
- 
-uint8_t Segment::encodeDigit(uint8_t i) {
-	if (i > 9) i = 0;
-   uint8_t e = asciEncoding[16+i];
-//   Serial.printf("%d --> 0b",i); Serial.println(e,BIN);
-   return e;
-}
-
-uint8_t Segment::encodeChar(char c) {
-   if ((c < 32) || (c > (96+32))) c = 32;
-   return asciEncoding[c-32];
-}
-
-void	Segment::reverse(void) {
-	uint8_t tmp[4];
-	for(int i=0;i<4;i++) tmp[3-i] = _data[i];
-	for(int i=0;i<4;i++) _data[i] = tmp[i];
+  _cache = _data;
+  device().setBrightness(_data._brightness, _data._visible);
+  device().setSegments(_data._buffer);
 }
 
 void  Segment::encode(char c3, char c2, char c1, char c0) {
-    _data[3] = encodeChar(c3);
-    _data[2] = encodeChar(c2);
-    _data[1] = encodeChar(c1);
-    _data[0] = encodeChar(c0);
+  _data._buffer[3] = encodeChar(c3);
+  _data._buffer[2] = encodeChar(c2);
+  _data._buffer[1] = encodeChar(c1);
+  _data._buffer[0] = encodeChar(c0);
 }

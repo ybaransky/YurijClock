@@ -14,18 +14,26 @@ struct Digits {
 };
 
 class Segment {
-    static Device   devices[3];
-    static uint8_t  asciEncoding[96];
-    static char     space;
-    static char     dchar;
-    static char     hchar;
-    static char     nchar;
 
-    void     encode(char, char, char, char);
-    uint8_t  encodeChar(char);
-    uint8_t  encodeDigit(uint8_t);
+    struct Data{
+      bool    operator==(const Data&);
+      Data&   operator=(const Data&);
+
+      void    init(void);
+      void    reverse(void);
+   //   Data    operator+(const Data& data);
+
+      uint8_t _buffer[4];
+      uint8_t _brightness;
+      bool    _visible;
+    };
+
+    static Device   devices[3];
 
     public:
+//      static  uint8_t* reverse(uint8_t*);
+//      static  char*    reverse(char*);
+
         void    init(int iam);
         Device& device(void);
 
@@ -37,18 +45,16 @@ class Segment {
         void    drawHHMM(const DateTime&, int);
         void    drawSSUU(const DateTime&, uint8_t, int);
 
-        void    drawText(const DateTime& dt, char* text, bool blinking=false);
-        void    setBrightness(uint8_t,bool);
+        void    drawText(char* text, bool visible);
+
+        void    setBrightness(uint8_t);
+        void    setVisible(bool);
 
     private:
-        bool    changed();
-        void    reverse();
-        void    saveToCache();
-        void    setSegment(bool colon=false);
+        void    setSegment(bool colon=false,bool print=false);
+        void    encode(char, char, char, char);
 
-        int         _iam;
-        
-        uint8_t     _data[4]; 
-        uint8_t     _cache[4]; 
-        uint8_t     _brightness;
+        int     _iam;
+        Data    _data;
+        Data    _cache;
 };

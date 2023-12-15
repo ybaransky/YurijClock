@@ -2,24 +2,19 @@
 #include <RTClib.h>
 #include "Constants.h"
 #include "Segment.h"
-
-#define SEGMENT_BRIGHTEST 7
-#define SEGMENT_DIMMEST   1
-#define SEGMENT_ON        true
-#define SEGMENT_OFF       false
-#define SEGMENT_COLON     0x40
-
 class DisplayMsg {
   public:
       void          set(const String&  msg, bool blink=false);
-      bool          blink(void) { return  _blink;}
+      const bool&   isBlinking(void) const { return _blink;}
       const String& text(void) const { return _text; }
+      void          print(void) const;
   private:
       String  _text;
       bool    _blink;
 };
 
 class Display {
+
   struct Cache {
     TimeSpan        _ts;
     DateTime        _dt;
@@ -37,24 +32,15 @@ class Display {
 
   public:
     void    init(void);
+    void    reset(void);
+
     void    test(void);
 
-    void    setFormat(int);
-    int     getFormat(void)   { return _formats[_mode]; }
-    void    incFormat(void);
-
-
-    void    setMode(int);
-    int     getMode(void)     { return _mode;};
-    void    incMode(void);
-    void    restoreMode(void);
-
     void    showInteger(int32_t);
-    void    setBrightness(uint8_t brightness,bool on=true);
 
     void    showTime(const TimeSpan&, uint8_t=0);
     void    showTime(const DateTime&, uint8_t=0);
-    void    showMessage(const DateTime&, const DisplayMsg&);
+    void    showText(const DateTime&, const DisplayMsg&);
     void    refresh();
 
   private:
@@ -64,8 +50,6 @@ class Display {
 
     Segment   _segments[N_SEGMENTS];
     char      _message[13];
-    int       _formats[N_MODES];
-    int       _mode,_prevMode;  // count down, count up, religious, ...
 
     // cache
     Cache     _cache;
