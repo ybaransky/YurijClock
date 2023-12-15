@@ -7,6 +7,7 @@
 #include "Timer.h"
 #include "Display.h"
 #include "Config.h"
+
 /*
 **********************************************************************
 ******************** Globals *****************************************
@@ -20,7 +21,20 @@ Display         *display;
 Config          *config;
 Timer           timer100ms;
 Timer           timer500ms;
-DisplayMsg      message;
+Message         message;
+
+struct TickType {
+  bool  sec;
+  bool  ms100;
+  bool  ms500;
+  TickType(void) : sec(false),ms100(false),ms500(false) {}
+};
+
+/*
+**********************************************************************
+******************** Schduler ****************************************
+**********************************************************************
+*/
 
 volatile bool EVENT_CLOCK_1_SEC  = false;
 
@@ -33,6 +47,13 @@ Scheduler* initScheduler(void) {
   sch->addTask(clock1sec);
   return sch;
 }
+
+/*
+**********************************************************************
+******************** setup   ****************************************
+**********************************************************************
+*/
+
 void setup() {
   // Initialize serial port
   Serial.begin(9600);
@@ -56,6 +77,8 @@ void setup() {
     message.set("LostPwr",true);
   }
 
+  // prepare the message object
+  // then usef the soft clock, and set an error msg
   message.set(config->getText(),true);
 
   Serial.flush();
@@ -67,9 +90,17 @@ void setup() {
   display->test();
 }
 
+/*
+**********************************************************************
+******************** Schduler ****************************************
+**********************************************************************
+*/
+
 void loop() {
   bool updateDisplay = false;
-  bool secondTick = false;
+  int timer100msCount;
+  int timer500msCount;
+  TickType tickType;
   static TimeSpan ts;
   static DateTime dt;
 
@@ -78,9 +109,9 @@ void loop() {
 
   if (EVENT_CLOCK_1_SEC) {
     EVENT_CLOCK_1_SEC = false;
-
     updateDisplay = true;
-    secondTick = true;
+    tickType.sec  = true;
+
     dt = rtClock->now();  // only grab full date on second tick
     timer100ms.start(100);
     if (dt.second()%10==0) {
@@ -91,34 +122,23 @@ void loop() {
  
   // just the 1/10 second timer.
   if (timer100ms.tick()) {
-    updateDisplay = true;
+    updateDisplay  = true;
+    tickType.ms100 = true;
+    timer100msCount = timer100ms.count();
   }
 
-  // this is how msg blinking rate
+  // this is the msg blinking rate
   if (timer500ms.tick()) {
-    updateDisplay = true;
+    updateDisplay  = true;
+    tickType.ms500 = true;
+    timer500msCount = timer500ms.count();
+    PVL(timer500msCount);
+
     if (timer500ms.finished()) {
       timer500ms.stop();
       config->restoreMode();
       display->reset();
       P(" Message over:  "); PL(message.text()); 
-    }
-  }
-
-  if (updateDisplay) {
-    int count = timer100ms.count();
-    switch (config->getMode()) {
-      case MODE_COUNTDOWN :
-        ts = TimeSpan(DateTime(config->_future.c_str()).unixtime() - dt.unixtime());
-        display->showCountDown(ts, count ? count : 10-count);
-        break;
-      case MODE_CLOCK:
-        display->showClock(dt, count);
-        break;
-      case MODE_MESSAGE:
-        display->showMessage(message,
-          timer500ms.finished() ? 1: timer500ms.count());
-        break;
     }
   }
 
@@ -150,5 +170,21 @@ void loop() {
     P("longPress"); P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
     rtClock->adjust(dt);
     */
+  }
+
+  if (updateDisplay) {
+    switch (config->getMode()) {
+      case MODE_COUNTDOWN :
+        ts = TimeSpan(DateTime(config->_future.c_str()).unixtime() - dt.unixtime());
+        display->showCountDown(ts, timer100msCount ? timer100msCount : 10-timer100msCount);
+        break;
+      case MODE_CLOCK:
+        display->showClock(dt, timer100msCount);
+        break;
+      case MODE_MESSAGE:
+        if (!tickType.ms100) 
+          display->showMessage(message, timer500ms.finished() ? 1: timer500msCount);
+        break;
+    }
   }
 }

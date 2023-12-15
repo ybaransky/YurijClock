@@ -17,25 +17,6 @@ This needs to be understood
 
 /*
 *************************************************************************
-*  DisplayMessage Class
-*************************************************************************
-*/
-
-void DisplayMsg::set(const String& text, bool blink) {
-  _text  = text;
-  _blink = blink;
-  P("DisplayMsg: |"); P(_text); PL("|");
-}
-
-void  DisplayMsg::print(void) const {
-  P("DMsg:");
-  SPACE; PV(_text);
-  SPACE; PV(_blink);
-  PL("");
-}
-
-/*
-*************************************************************************
 *  Display Class
 *************************************************************************
 */
@@ -60,7 +41,6 @@ void Display::reset(void) {
     segment.setVisible(true);
   }
 }
-
 
 void Display::test(void) {
   int values[] = {0000,1111,2222};
@@ -104,19 +84,21 @@ void Display::showClock(const DateTime& dt, uint8_t ms100) {
   _segments[SSUU].drawSSUU(dt,ms100,format);
 }
 
-void Display::showMessage(const DisplayMsg& dmsg, uint32_t count) {
-  _cache.save(dmsg);
+void Display::showMessage(const Message& msg, uint32_t count) {
+  bool visible = msg.isBlinking() ? count % 2 : true;
+  _cache.save(msg);
 
   char buffer[13];
-  snprintf(buffer,13,"%-12s",dmsg.text().c_str());
-  P("|"); P(buffer); PL("|");
+  snprintf(buffer,13,"%-12s",msg.text().c_str());
+  PV(millis()); SPACE;  P("|"); P(buffer); P("|"); SPACE;PV(count);SPACE; PVL(visible);
+  
+  // reverse this entire buffer
   char tmp[12];
   memcpy(tmp,buffer,sizeof(tmp));
   bzero(buffer,sizeof(buffer));
   for(int i=0;i<12;i++)
     buffer[i] = tmp[11-i];
 
-  bool visible = dmsg.isBlinking() ? count % 2 : true;
   _segments[DDDD].drawText(&buffer[8],visible);
   _segments[HHMM].drawText(&buffer[4],visible);
   _segments[SSUU].drawText(&buffer[0],visible);
@@ -126,6 +108,6 @@ void Display::refresh(void) {
   switch(config->getMode()) {
     case MODE_COUNTDOWN :  showCountDown(_cache.ts(), _cache.ms()); break;
     case MODE_CLOCK :      showClock(_cache.dt(), _cache.ms()); break;
-    case MODE_MESSAGE :    showMessage(_cache.displayMsg(), 1); break;
+    case MODE_MESSAGE :    showMessage(_cache.msg(), 1); break;
   }
 }

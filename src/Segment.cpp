@@ -314,7 +314,7 @@ void  Segment::drawText(char* text, bool visible) {
     Serial.printf("%d |%c%c%c%c| ",_iam,text[3],text[2],text[2],text[0]);
     PVL(_data._brightness); 
 */
-    setSegment(false);
+    setSegment(false,true);
 }
 
 void	Segment::setSegment(bool colon, bool print) {
