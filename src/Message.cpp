@@ -10,11 +10,13 @@
 void Message::set(const String& text, bool blink) {
   _text  = text;
   _blink = blink;
-  P("DisplayMsg: |"); P(_text); PL("|");
 }
 
-void  Message::print(void) const {
-  P("DMsg:");
+void  Message::print(const char* msg) const {
+  if (msg) {
+    P(msg); SPACE;
+  }
+  P("Message:");
   SPACE; PV(_text);
   SPACE; PV(_blink);
   PL("");

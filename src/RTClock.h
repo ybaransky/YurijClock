@@ -17,4 +17,4 @@ class RTClock {
     private:
         bool        _lostPower;
 };
-extern RTClock*         initRTClock(void);
+extern RTClock*       initRTClock(void);

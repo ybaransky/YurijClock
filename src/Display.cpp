@@ -30,10 +30,10 @@ Display* initDisplay(void) {
 void Display::init(void) {
   for(int i=0; i < N_SEGMENTS; i++) 
     _segments[i].init(i);
-  reset();
+  clear();
 }
 
-void Display::reset(void) {
+void Display::clear(void) {
   uint8_t brightness = config->getBrightness();
   for(auto& segment : _segments) {
     segment.device().clear();
@@ -84,13 +84,13 @@ void Display::showClock(const DateTime& dt, uint8_t ms100) {
   _segments[SSUU].drawSSUU(dt,ms100,format);
 }
 
-void Display::showMessage(const Message& msg, uint32_t count) {
+void Display::showText(const Message& msg, uint32_t count) {
   bool visible = msg.isBlinking() ? count % 2 : true;
   _cache.save(msg);
 
   char buffer[13];
   snprintf(buffer,13,"%-12s",msg.text().c_str());
-  PV(millis()); SPACE;  P("|"); P(buffer); P("|"); SPACE;PV(count);SPACE; PVL(visible);
+  P("Display::showText "); PV(millis()); SPACE;  P("|"); P(buffer); P("|"); SPACE;PV(count);SPACE; PVL(visible);
   
   // reverse this entire buffer
   char tmp[12];
@@ -108,6 +108,7 @@ void Display::refresh(void) {
   switch(config->getMode()) {
     case MODE_COUNTDOWN :  showCountDown(_cache.ts(), _cache.ms()); break;
     case MODE_CLOCK :      showClock(_cache.dt(), _cache.ms()); break;
-    case MODE_MESSAGE :    showMessage(_cache.msg(), 1); break;
+    case MODE_DEMO :       showText(_cache.msg(), 1); break;
+    case MODE_MESSAGE :    showText(_cache.msg(), 1); break;
   }
 }

@@ -24,7 +24,7 @@ class Display {
 
   public:
     void    init(void);
-    void    reset(void);
+    void    clear(void);
 
     void    test(void);
 
@@ -32,7 +32,7 @@ class Display {
 
     void    showCountDown(const TimeSpan&, uint8_t=0);
     void    showClock(const DateTime&, uint8_t=0);
-    void    showMessage(const Message&, uint32_t count);
+    void    showText(const Message&, uint32_t count);
     void    refresh();
 
   private:

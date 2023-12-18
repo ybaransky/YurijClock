@@ -46,10 +46,10 @@ static char    nchar = 'n';
 
 #define COMMON_CLK   1
 #ifdef COMMON_CLK
-Device  Segment::devices[3] = {Device(D3,D6),Device(D3,D5),Device(D3,D4)};
-//Device  Segment::devices[3] = {Device(D3,D4),Device(D3,D5),Device(D3,D6)};
+static Device  sDevices[N_SEGMENTS] = {Device(D3,D6),Device(D3,D5),Device(D3,D4)};
+//static Device  sDevices[N_DEVICES] = {Device(D3,D4),Device(D3,D5),Device(D3,D6)};
 #else
-Device Segment::devices[3] = {Device(D3,D4),Device(D5,D6),Device(RX,TX)};
+static Device sDevices[N_DEVICES] = {Device(D3,D4),Device(D5,D6),Device(RX,TX)};
 #endif
 
 /*
@@ -87,10 +87,10 @@ void  Segment::Data::init(void) {
 
 }
 void 	Segment::Data::reverse(void) {
-  uint8_t tmp[N_DIGITS_PER_SEGMENT];
+  uint8_t tmp[DIGITS_PER_SEGMENT];
   memcpy(tmp,_buffer,sizeof(_buffer));
-  for(int i=0; i<N_DIGITS_PER_SEGMENT; i++)  
-    _buffer[i] = tmp[N_DIGITS_PER_SEGMENT-1 - i];
+  for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
+    _buffer[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
 }
 
 Segment::Data& Segment::Data::operator=(const Segment::Data& data) {
@@ -117,7 +117,7 @@ bool  Segment::Data::operator==(const Segment::Data& data) {
 *************************************************************************
 */
 
-Device& Segment::device() { return devices[_iam];}
+Device& Segment::device() { return sDevices[_iam];}
 void    Segment::init(int iam) { 
     _iam = iam; 
     _data.init();
@@ -321,7 +321,7 @@ void	Segment::setSegment(bool colon, bool print) {
 	_data.reverse();
 	if (colon) {
 		uint8_t dots = 0x40;
-  	for(int i = 0; i < N_DIGITS_PER_SEGMENT; ++i) {
+  	for(int i = 0; i < DIGITS_PER_SEGMENT; ++i) {
 	    _data._buffer[i] |= (dots & 0x80);
 	    dots <<= 1;
 	  }

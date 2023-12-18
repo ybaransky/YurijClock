@@ -28,8 +28,6 @@ class Segment {
       bool    _visible;
     };
 
-    static Device   devices[3];
-
     public:
 //      static  uint8_t* reverse(uint8_t*);
 //      static  char*    reverse(char*);

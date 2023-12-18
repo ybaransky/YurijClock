@@ -7,6 +7,10 @@
 #define DEFAULT_MESSAGE "YuriCloc"
 #define DEFAULT_BRIGHTNESS 7   //  1 ... 7
 
+static  const char* modeNames[N_MODES] = {
+  "Countdown", "Clock", "Message", "Demo",
+};
+
 Config* initConfig(void) {
     Config* cfg = new Config();
     cfg->init();
@@ -22,55 +26,37 @@ void    Config::init(void) {
 }
 
 int   Config::getMode(void) { return _mode;}
+void  Config::setMode(int mode) { _prevMode = _mode; _mode = mode; }
+int   Config::restoreMode(void) { _mode = _prevMode; return _mode; }
 void  Config::incMode(void) { 
   int mode = getMode()+1;
-  P("changing moe to ");PVL(mode);
-  setMode(mode%3);
-}
-void  Config::setMode(int mode) { 
-  _prevMode = _mode;
-  _mode = mode; 
-}
-int   Config::restoreMode(void) { 
-  _mode = _prevMode;
-  return _mode;
+  setMode(mode%N_MODES);
+  P("changing mode to ");PL(modeNames[_mode]);
 }
 
-int   Config::getFormat(void) { 
-  int format;
-  switch(_mode) {
-    case MODE_COUNTDOWN : format = _formats[MODE_COUNTDOWN]; break;
-    case MODE_CLOCK :     format = _formats[MODE_CLOCK]; break;
-    case MODE_MESSAGE :   format = _formats[MODE_MESSAGE]; break;
-    default: format = 0; break;
-  }
-  return format;
-}
-
-void  Config::setFormat(int format) { 
-  switch(_mode) {
-    case MODE_COUNTDOWN : _formats[MODE_COUNTDOWN] = format; break;
-    case MODE_CLOCK :     _formats[MODE_CLOCK] = format; break;
-    case MODE_MESSAGE :   _formats[MODE_MESSAGE] = format; break;
-    default: break;
-  }
-}
-
+int   Config::getFormat(void) { return _formats[_mode]; }
+int   Config::getFormat(int mode) { return _formats[mode]; }
+void  Config::setFormat(int format,int mode) { _formats[mode] = format; }
 void  Config::incFormat(void) {
-  int format = getFormat();
+  int format = getFormat(_mode);
   format++;
   switch(_mode) {
-    case MODE_COUNTDOWN : 
-      _formats[MODE_COUNTDOWN] = format % 7; 
-      break;
-    case MODE_CLOCK :  
-      _formats[MODE_CLOCK] = format % 11; 
-      break;
-    case MODE_MESSAGE :  
-      _formats[MODE_MESSAGE] = format % 2; 
-      break;
+    case MODE_COUNTDOWN : _formats[MODE_COUNTDOWN] = format % 7; break;
+    case MODE_CLOCK   :  _formats[MODE_CLOCK]      = format % 11; break;
+    case MODE_DEMO    :  _formats[MODE_DEMO]       = format % 2; break;
+    case MODE_MESSAGE :  _formats[MODE_MESSAGE]    = format % 2; break;
     default: break;
   }
+}
+bool  Config::isTenthSecFormat(void) {
+  bool rc;
+  int format = _formats[_mode];
+  switch(_mode) {
+    case MODE_COUNTDOWN : rc = (format==0) || (format==3); break;
+    case MODE_CLOCK :     rc = (format==5) || (format==9); break;
+    default : rc = false;
+  }
+  return rc;
 }
 
 uint8_t Config::getBrightness(void) { return _brightness;}
@@ -82,12 +68,13 @@ String& Config::getText(void) { return _text; }
 
 void  Config::print(void) const {
   P("config:"); 
+  SPACE; PVL(_text);
+  SPACE; PVL(_future);
+  SPACE; Serial.printf("_brightness=0x%x\n",_brightness);
+
   SPACE; PV(_mode);
-  SPACE; PV(_formats[0]);
-  SPACE; PV(_formats[1]);
-  SPACE; PV(_formats[2]);
-  SPACE; PV(_text);
-  SPACE; PV(_future);
-  SPACE; Serial.printf("0x%x",_brightness);
+  for(int i=0;i<N_MODES;i++) {
+    P(",format["); P(i); P("]=");P(_formats[i]);
+  }
   PL("");
 }

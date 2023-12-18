@@ -122,17 +122,17 @@ uint8_t encodeChar(char c) {
 }
 
 uint8_t*	reverse(uint8_t *data) {
-  uint8_t tmp[N_DIGITS_PER_SEGMENT];
+  uint8_t tmp[DIGITS_PER_SEGMENT];
   memcpy(tmp,data,sizeof(tmp));
-  for(int i=0; i<N_DIGITS_PER_SEGMENT; i++)  
-    data[i] = tmp[N_DIGITS_PER_SEGMENT-1 - i];
+  for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
+    data[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
   return data;
 }
 
 char*	reverse(char* data) {
-  char tmp[N_DIGITS_PER_SEGMENT];
+  char tmp[DIGITS_PER_SEGMENT];
   memcpy(tmp,data,sizeof(tmp));
-  for(int i=0; i<N_DIGITS_PER_SEGMENT; i++)  
-    data[i] = tmp[N_DIGITS_PER_SEGMENT-1 - i];
+  for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
+    data[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
   return data;
 }

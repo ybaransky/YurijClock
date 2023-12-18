@@ -22,6 +22,8 @@ Config          *config;
 Timer           timer100ms;
 Timer           timer500ms;
 Message         message;
+Message         msgDemo;
+Message         msgPerm;
 
 struct TickType {
   bool  sec;
@@ -68,9 +70,9 @@ void setup() {
   display   = initDisplay();
   scheduler = initScheduler();
 
-  // get the rtc clock going, but is not found or working
-  // then usef the soft clock, and set an error msg
-  rtClock   = initRTClock();
+  // get the rtc rtClock going, but is not found or working
+  // then usef the soft rtClock, and set an error msg
+  rtClock     = initRTClock();
   if (!rtClock->startTicking()) 
     clock1sec.enable();
   if (rtClock->lostPower()) {
@@ -78,8 +80,10 @@ void setup() {
   }
 
   // prepare the message object
-  // then usef the soft clock, and set an error msg
+  // then usef the soft rtClock, and set an error msg
   message.set(config->getText(),true);
+  msgDemo.set("Fuc You",true);
+  msgPerm.set("Good Luc",false);
 
   Serial.flush();
   delay(1000);
@@ -98,8 +102,6 @@ void setup() {
 
 void loop() {
   bool updateDisplay = false;
-  int timer100msCount;
-  int timer500msCount;
   TickType tickType;
   static TimeSpan ts;
   static DateTime dt;
@@ -113,40 +115,43 @@ void loop() {
     tickType.sec  = true;
 
     dt = rtClock->now();  // only grab full date on second tick
-    timer100ms.start(100);
+    timer100ms.start(100);  // start 1/10 second timer on a full second tick
     if (dt.second()%10==0) {
-      PVL(dt.second());
       config->print();
     }
   }
  
   // just the 1/10 second timer.
   if (timer100ms.tick()) {
-    updateDisplay  = true;
+    if (config->isTenthSecFormat())
+      updateDisplay  = true;
     tickType.ms100 = true;
-    timer100msCount = timer100ms.count();
   }
 
   // this is the msg blinking rate
   if (timer500ms.tick()) {
-    updateDisplay  = true;
+    if (message.isBlinking())
+      updateDisplay  = true;
     tickType.ms500 = true;
-    timer500msCount = timer500ms.count();
-    PVL(timer500msCount);
+    P(millis()); P(" 500ms "); PVL(timer500ms.count());
 
     if (timer500ms.finished()) {
       timer500ms.stop();
       config->restoreMode();
-      display->reset();
+      display->clear();
       P(" Message over:  "); PL(message.text()); 
+      PL("**********************");
+      if (config->getMode() == MODE_MESSAGE) {
+        message = msgPerm;
+      }
     }
   }
-
+ 
   if (SINGLE_BUTTON_CLICK) {
     SINGLE_BUTTON_CLICK = false;
     PL("single button click ");
     config->incFormat();
-    display->refresh();
+//    display->refresh();
     config->print();
   }
 
@@ -154,17 +159,35 @@ void loop() {
     DOUBLE_BUTTON_CLICK = false;
     PL("double button click");
     config->incMode();
-    display->refresh();
     config->print();
+    switch (config->getMode()) {
+      case MODE_DEMO : 
+        message = msgDemo;
+        if (message.isBlinking())
+          timer500ms.start(500,8000);
+        break;
+      case MODE_MESSAGE : 
+        message = msgPerm;
+        if (message.isBlinking())
+          timer500ms.start(500);
+        break;
+      default :
+        message.set("Good Luc",false);
+        timer500ms.stop();
+    }
+    display->clear(); // in case we caught a blink
+    PL("*************************************************************");
+    PL("*************************************************************");
   }
 
   if (LONG_BUTTON_CLICK) {
     LONG_BUTTON_CLICK = false;
-    message.set("Fuc You",true);
-    message.print();
-    config->setMode(MODE_MESSAGE);
-    timer500ms.start(500,8000);
+    PL("Long button click");
+    config->setMode(MODE_DEMO);
     config->print();
+    timer500ms.start(500,8000);
+    message = msgDemo;
+    message.print("main");
     /*
     DateTime dt(F(__DATE__),F(__TIME__));
     P("longPress"); P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
@@ -172,18 +195,25 @@ void loop() {
     */
   }
 
-  if (updateDisplay) {
+ if (updateDisplay) {
+    int count;
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
+        count = timer100ms.count();
         ts = TimeSpan(DateTime(config->_future.c_str()).unixtime() - dt.unixtime());
-        display->showCountDown(ts, timer100msCount ? timer100msCount : 10-timer100msCount);
+//        Serial.printf("cuntdown: count=%s")
+        display->showCountDown(ts, count ? count : 10-count);
         break;
       case MODE_CLOCK:
-        display->showClock(dt, timer100msCount);
+        count = timer100ms.count();
+        display->showClock(dt, count);
         break;
       case MODE_MESSAGE:
-        if (!tickType.ms100) 
-          display->showMessage(message, timer500ms.finished() ? 1: timer500msCount);
+      case MODE_DEMO:
+        if (!tickType.ms100) { 
+          timer500ms.print("main:");
+          display->showText(message, timer500ms.finished() ? 1: timer500ms.count());
+        }
         break;
     }
   }

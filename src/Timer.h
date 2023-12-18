@@ -3,17 +3,21 @@
 
 class Timer {
     public:
-        void        start(uint32_t interval, uint32_t duration=0);
+        void        start(ulong period, ulong duration=0);
         void        stop(void);
         bool        tick(void);
-        bool        finished(uint32_t now=0);
-        uint32_t    count(void); 
+        bool        active(void);
+        bool        finished(ulong now=0);
+        int         count(void); 
+
+        void        print(const char *msg);
 
     private:
-        uint32_t    _interval;
-        uint32_t    _count;
-        uint32_t    _last;
-        uint32_t    _start;
-        uint32_t    _duration;
+        ulong    _period;
+        ulong    _id;
+        int      _count;
+        ulong    _last;
+        ulong    _start;
+        ulong    _duration;
 };
 

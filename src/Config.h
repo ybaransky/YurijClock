@@ -11,8 +11,10 @@ class Config {
         void    incMode(void);
 
         int     getFormat(void);
-        void    setFormat(int);
+        int     getFormat(int);
+        void    setFormat(int,int);
         void    incFormat(void);
+        bool    isTenthSecFormat(void);
 
         uint8_t getBrightness(void);
         void    setBrightness(uint8_t);
@@ -24,8 +26,8 @@ class Config {
 
         String  _future;    // 20 chars iso formate "2023-12-29T15:45:00"
         String  _text;      // 12 chars + null
-        int     _formats[N_MODES];
-        int     _mode,_prevMode;
+        int     _format, _formats[N_MODES];
+        int     _mode, _prevMode;
         uint8_t _brightness;
 };
 
