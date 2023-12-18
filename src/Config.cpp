@@ -4,8 +4,11 @@
 #include "Debug.h"
 
 #define DEFAULT_FUTURE  "2023-12-22T15:45:00"
-#define DEFAULT_MESSAGE "YuriCloc"
+#define DEFAULT_START_MESSAGE "YuriCloc"
+#define DEFAULT_END_MESSAGE   "Fuc You"
 #define DEFAULT_BRIGHTNESS 7   //  1 ... 7
+
+#define FILENAME  "/coundown.json" 
 
 static  const char* modeNames[N_MODES] = {
   "Countdown", "Clock", "Message", "Demo",
@@ -18,8 +21,9 @@ Config* initConfig(void) {
 }
 
 void    Config::init(void) {
-    _future = DEFAULT_FUTURE;
-    _text   = DEFAULT_MESSAGE;
+    _isoFuture = DEFAULT_FUTURE;
+    _msgStart = DEFAULT_START_MESSAGE;
+    _msgEnd = DEFAULT_END_MESSAGE;
     _mode   = MODE_COUNTDOWN;
     _brightness = DEFAULT_BRIGHTNESS;
     memset(_formats,0,sizeof(_formats));
@@ -48,6 +52,11 @@ void  Config::incFormat(void) {
     default: break;
   }
 }
+const String&   Config::getAPName(void) { return _apName;}
+void            Config::setAPName(const String& name) { _apName = name;}
+const String&   Config::getAPPassword(void) { return _apPassword;}
+void            Config::setAPPassword(const String& pw) { _apPassword = pw;}
+
 bool  Config::isTenthSecFormat(void) {
   bool rc;
   int format = _formats[_mode];
@@ -62,14 +71,16 @@ bool  Config::isTenthSecFormat(void) {
 uint8_t Config::getBrightness(void) { return _brightness;}
 void    Config::setBrightness(uint8_t brightness) { _brightness = brightness;}
 
-void  Config::setText(const String& text) { _text = text; }
-String& Config::getText(void) { return _text; }
-
+void          Config::setMsgStart(const String& msg) { _msgStart = msg;}
+const String& Config::getMsgStart(void) { return _msgStart; }
+void          Config::setMsgEnd(const String& msg) { _msgEnd = msg;}
+const String& Config::getMsgEnd(void) { return _msgEnd; }
 
 void  Config::print(void) const {
   P("config:"); 
-  SPACE; PVL(_text);
-  SPACE; PVL(_future);
+  SPACE; PVL(_msgStart);
+  SPACE; PVL(_msgEnd);
+  SPACE; PVL(_isoFuture);
   SPACE; Serial.printf("_brightness=0x%x\n",_brightness);
 
   SPACE; PV(_mode);
@@ -77,4 +88,8 @@ void  Config::print(void) const {
     P(",format["); P(i); P("]=");P(_formats[i]);
   }
   PL("");
+}
+
+void  Config::saveFile(void) {
+  PL("trying to save config file");
 }

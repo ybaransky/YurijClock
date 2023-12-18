@@ -81,7 +81,7 @@ void setup() {
 
   // prepare the message object
   // then usef the soft rtClock, and set an error msg
-  message.set(config->getText(),true);
+  message.set(config->getMsgStart(),true);
   msgDemo.set("Fuc You",true);
   msgPerm.set("Good Luc",false);
 
@@ -200,7 +200,7 @@ void loop() {
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
         count = timer100ms.count();
-        ts = TimeSpan(DateTime(config->_future.c_str()).unixtime() - dt.unixtime());
+        ts = TimeSpan(DateTime(config->_isoFuture.c_str()).unixtime() - dt.unixtime());
 //        Serial.printf("cuntdown: count=%s")
         display->showCountDown(ts, count ? count : 10-count);
         break;

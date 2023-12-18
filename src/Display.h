@@ -29,6 +29,7 @@ class Display {
     void    test(void);
 
     void    showInteger(int32_t);
+    void    setBrightness();
 
     void    showCountDown(const TimeSpan&, uint8_t=0);
     void    showClock(const DateTime&, uint8_t=0);
@@ -42,4 +43,5 @@ class Display {
     // cache
     Cache     _cache;
 };
+
 extern Display* initDisplay(void);

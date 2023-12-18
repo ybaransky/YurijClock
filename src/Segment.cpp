@@ -18,11 +18,11 @@
 
 /* 
     countup display modes
-    "0   YYYY | MM:DD | hh:mm",
-    "1   YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
+    "0   YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
+    "1   YYYY | MM:DD | hh:mm",
     "2   YYYY |    MM |    DD",
-    "3     MM |    DD | hh:mm",
-    "4     MM |    DD | hh:mm",  // blinking hh:mm colon
+    "3     MM |    DD | hh:mm",  // blinking hh:mm colon
+    "4     MM |    DD | hh:mm",
     "5  MM:DD | hh:mm | ss  u",
     "6  MM:DD | hh:mm |    ss",
     "7  MM:DD |    hh | mm:ss",
@@ -142,8 +142,8 @@ void  Segment::drawDDDD(const TimeSpan& ts, int format) {
     } else {
         if (showD) {
             if (days.d100)     encode(days.c100, days.c10, days.c1, dchar);
-            else if (days.d10) encode( days.c10,  days.c1,    space, dchar);
-            else               encode(     space,  days.c1,    space, dchar); 
+            else if (days.d10) encode( days.c10,  days.c1,   space, dchar);
+            else               encode(    space,  days.c1,   space, dchar); 
         } else {
             if (days.d100)     encode(space, days.c100, days.c10, days.c1);
             else if (days.d10) encode(space,     space, days.c10, days.c1);
@@ -264,6 +264,23 @@ void  Segment::drawHHMM(const DateTime& dt, int format) {
     setSegment(colon);
 };
  
+/* 
+    countup display modes
+    "0   YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
+    "1   YYYY | MM:DD | hh:mm",
+    "2   YYYY |    MM |    DD",
+    "3     MM |    DD | hh:mm",  // blinking hh:mm colon
+    "4     MM |    DD | hh:mm",
+    "5  MM:DD | hh:mm | ss  u",
+    "6  MM:DD | hh:mm |    ss",
+    "7  MM:DD |    hh | mm:ss",
+    "8  MM:DD |    hh |    mm",
+    "9     DD | hh:mm | ss  u",
+    "10    DD | hh:mm |    ss",
+    "11    DD |    hh | mm:ss",
+    "12    DD |    hh |    mm",
+*/
+ 
 void  Segment::drawSSUU(const DateTime& dt, uint8_t ms100, int format) {
     Digits  days(dt.day());
     Digits  hours(dt.hour());
@@ -278,7 +295,7 @@ void  Segment::drawSSUU(const DateTime& dt, uint8_t ms100, int format) {
     bool    showMinsSecs  = (format==7) || (format==11);
     bool    showMins      = (format==12);
     bool    colon         = showHoursMins || showMinsSecs;
-    bool    blinking      = (format==1) || (format==4);
+    bool    blinking      = (format==0) || (format==3);
     if (blinking) {
         colon = dt.second() % 2;
     }

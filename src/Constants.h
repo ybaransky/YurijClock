@@ -1,6 +1,15 @@
 #pragma once
 #include <Arduino.h>
 
+enum  {
+  SSUU=0,HHMM, DDDD, N_SEGMENTS,
+  DIGITS_PER_SEGMENT=4,
+  CHARS_PER_MESSAGE=12,
+  MODE_COUNTDOWN=0, MODE_CLOCK,MODE_MESSAGE,MODE_DEMO, N_MODES
+};
+
+#define N_ITEMS(x)   (sizeof(x) / sizeof((x)[0]))     // number of elements in array x
+
 // RTC 3231   I2C  3.3v - 5v
 #define RTC_SCL_PIN D1  // set somewhere in Wire as default
 #define RTC_SDA_PIN D2 
@@ -36,13 +45,6 @@
 #define BRIGHTEST  7
 #define DIMMEST  1
 #define COLON  0x40 // 0b01000000;
-
-
-enum  {
-  SSUU=0,HHMM, DDDD, N_SEGMENTS,
-  DIGITS_PER_SEGMENT=4,
-  MODE_COUNTDOWN=0, MODE_CLOCK,MODE_MESSAGE,MODE_DEMO, N_MODES
-};
 
 
 

@@ -8,5 +8,4 @@
 #define SPACE           P(" ")
 #define EQUAL           P("=")
 
-#define N_ELETS(x)   (sizeof(x) / sizeof((x)[0]))     // number of elements in array x
 

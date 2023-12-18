@@ -16,19 +16,33 @@ class Config {
         void    incFormat(void);
         bool    isTenthSecFormat(void);
 
-        uint8_t getBrightness(void);
-        void    setBrightness(uint8_t);
+        uint8_t       getBrightness(void);
+        void          setBrightness(uint8_t);
 
-        void    setText(const String&);
-        String& getText(void);
+        const String& getMsgStart(void);
+        void          setMsgStart(const String&);
+        const String& getMsgEnd(void);
+        void          setMsgEnd(const String&);
 
-        void    print(void) const;
+        const String& getAPName(void);
+        void          setAPName(const String&);
 
-        String  _future;    // 20 chars iso formate "2023-12-29T15:45:00"
-        String  _text;      // 12 chars + null
+        const String& getAPPassword(void);
+        void          setAPPassword(const String&);
+
+        void          saveFile(void);
+        void          print(void) const;
+
+        String  _isoFuture;                      // 20 chars iso format "2023-12-29T15:45:00"
+        String  _msgStart;  /// at most 12 chars
+        String  _msgEnd;
         int     _format, _formats[N_MODES];
         int     _mode, _prevMode;
         uint8_t _brightness;
+
+        String  _apName;
+        String  _apPassword;
+        String  _filename;
 };
 
 extern Config*  initConfig(void);
