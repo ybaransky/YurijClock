@@ -23,7 +23,8 @@ Timer           timer100ms;
 Timer           timer500ms;
 Message         message;
 Message         msgDemo;
-Message         msgPerm;
+Message         msgStart;
+Message         msgFinal;
 
 struct TickType {
   bool  sec;
@@ -31,6 +32,14 @@ struct TickType {
   bool  ms500;
   TickType(void) : sec(false),ms100(false),ms500(false) {}
 };
+
+struct ModeState {
+  int       _mode;
+  String    _msg;
+  bool      _blinking;
+};
+
+ModeState   prevMode;
 
 /*
 **********************************************************************
@@ -70,6 +79,9 @@ void setup() {
   display   = initDisplay();
   scheduler = initScheduler();
 
+  // this is the startup message
+  message.set(config->_msgStart,true);
+
   // get the rtc rtClock going, but is not found or working
   // then usef the soft rtClock, and set an error msg
   rtClock     = initRTClock();
@@ -79,12 +91,6 @@ void setup() {
     message.set("LostPwr",true);
   }
 
-  // prepare the message object
-  // then usef the soft rtClock, and set an error msg
-  message.set(config->getMsgStart(),true);
-  msgDemo.set("Fuc You",true);
-  msgPerm.set("Good Luc",false);
-
   Serial.flush();
   delay(1000);
 
@@ -92,11 +98,16 @@ void setup() {
   P("compile time: "); PL(__TIMESTAMP__);
   config->print();
   display->test();
+
+  // start the timer for the startup message
+  // and then drop into the saved mode
+  timer500ms.start(500,5000);
+  prevMode._mode = config->_mode;
 }
 
 /*
 **********************************************************************
-******************** Schduler ****************************************
+************************ loop ****************************************
 **********************************************************************
 */
 
@@ -111,11 +122,12 @@ void loop() {
 
   if (EVENT_CLOCK_1_SEC) {
     EVENT_CLOCK_1_SEC = false;
-    updateDisplay = true;
     tickType.sec  = true;
+    updateDisplay = true;
 
     dt = rtClock->now();  // only grab full date on second tick
     timer100ms.start(100);  // start 1/10 second timer on a full second tick
+
     if (dt.second()%10==0) {
       config->print();
     }
@@ -123,21 +135,22 @@ void loop() {
  
   // just the 1/10 second timer.
   if (timer100ms.tick()) {
+    tickType.ms100 = true;
     if (config->isTenthSecFormat())
       updateDisplay  = true;
-    tickType.ms100 = true;
   }
 
   // this is the msg blinking rate
   if (timer500ms.tick()) {
+    tickType.ms500 = true;
+
     if (message.isBlinking())
       updateDisplay  = true;
-    tickType.ms500 = true;
-    P(millis()); P(" 500ms "); PVL(timer500ms.count());
 
+    // if there was a time limit, this must be start or demo style of text
     if (timer500ms.finished()) {
       timer500ms.stop();
-      config->restoreMode();
+      config->setMode(prevMode._mode);
       display->clear();
       P(" Message over:  "); PL(message.text()); 
       PL("**********************");
@@ -147,33 +160,23 @@ void loop() {
     }
   }
  
-  if (SINGLE_BUTTON_CLICK) {
-    SINGLE_BUTTON_CLICK = false;
+  if (BUTTON_SINGLE_CLICK) {
+    BUTTON_SINGLE_CLICK = false;
     PL("single button click ");
-    config->incFormat();
+    config->setFormat(config->getNextFormat());
 //    display->refresh();
     config->print();
   }
 
-  if (DOUBLE_BUTTON_CLICK) {
-    DOUBLE_BUTTON_CLICK = false;
+  if (BUTTON_DOUBLE_CLICK) {
+    BUTTON_DOUBLE_CLICK = false;
     PL("double button click");
-    config->incMode();
+    config->setMode(config->getNextMode());
     config->print();
-    switch (config->getMode()) {
-      case MODE_DEMO : 
-        message = msgDemo;
-        if (message.isBlinking())
-          timer500ms.start(500,8000);
-        break;
-      case MODE_MESSAGE : 
-        message = msgPerm;
-        if (message.isBlinking())
-          timer500ms.start(500);
-        break;
-      default :
-        message.set("Good Luc",false);
-        timer500ms.stop();
+    if (config->getMode()) {
+      message = msgFinal;
+      if (message.isBlinking())
+        timer500ms.start(500);
     }
     display->clear(); // in case we caught a blink
     PL("*************************************************************");

@@ -1,18 +1,17 @@
 #include <Arduino.h>
 #include "Button.h"
 #include "RTClock.h"
-#include "Constants.h"
+#include "PinMap.h"
 #include "Debug.h"
 
-
-volatile bool   SINGLE_BUTTON_CLICK = false;
-volatile bool   DOUBLE_BUTTON_CLICK = false;
-volatile bool   LONG_BUTTON_CLICK   = false;
+volatile bool   BUTTON_SINGLE_CLICK = false;
+volatile bool   BUTTON_DOUBLE_CLICK = false;
+volatile bool   BUTTON_LONG_CLICK   = false;
 
 // push button
-void oneButtonSingleClick() { SINGLE_BUTTON_CLICK = true; }
-void oneButtonDoubleClick() { DOUBLE_BUTTON_CLICK = true; }
-void oneButtonLongPress()   { LONG_BUTTON_CLICK = true; }
+void oneButtonSingleClick() { BUTTON_SINGLE_CLICK = true; }
+void oneButtonDoubleClick() { BUTTON_DOUBLE_CLICK = true; }
+void oneButtonLongPress()   { BUTTON_LONG_CLICK = true; }
 OneButton* initOneButton() {
     OneButton* btn = new OneButton(ONEBUTTON_PIN,false,false);  // D8
     btn->attachClick(oneButtonSingleClick);
@@ -21,5 +20,3 @@ OneButton* initOneButton() {
     btn->setClickMs(400);
     return btn;
 }
-
-

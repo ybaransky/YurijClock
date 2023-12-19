@@ -3,16 +3,17 @@
 #include "Config.h"
 #include "Debug.h"
 
-#define DEFAULT_FUTURE  "2023-12-22T15:45:00"
-#define DEFAULT_START_MESSAGE "YuriCloc"
-#define DEFAULT_END_MESSAGE   "Fuc You"
-#define DEFAULT_BRIGHTNESS 7   //  1 ... 7
-
 #define FILENAME  "/coundown.json" 
 
-static  const char* modeNames[N_MODES] = {
-  "Countdown", "Clock", "Message", "Demo",
-};
+#define DEFAULT_TIME_START    "2023-12-22T15:45:00"
+#define DEFAULT_TIME_FINAL      "2023-12-22T15:45:00"
+
+#define DEFAULT_MESSAGE_START "YuriCloc"
+#define DEFAULT_MESSAGE_FINAL "Good Luc"
+
+#define DEFAULT_BRIGHTNESS 7   //  1 ... 7
+
+static const char*  NAME="Config::";
 
 Config* initConfig(void) {
     Config* cfg = new Config();
@@ -21,49 +22,46 @@ Config* initConfig(void) {
 }
 
 void    Config::init(void) {
-    _isoFuture = DEFAULT_FUTURE;
-    _msgStart = DEFAULT_START_MESSAGE;
-    _msgEnd = DEFAULT_END_MESSAGE;
+    _timeStart = DEFAULT_TIME_START;
+    _timeFinal = DEFAULT_TIME_FINAL;
+
+    _msgStart = DEFAULT_MESSAGE_START;
+    _msgFinal   = DEFAULT_MESSAGE_END;
+
     _mode   = MODE_COUNTDOWN;
-    _brightness = DEFAULT_BRIGHTNESS;
     memset(_formats,0,sizeof(_formats));
+
+    _brightness = DEFAULT_BRIGHTNESS;
 }
 
 int   Config::getMode(void) { return _mode;}
-void  Config::setMode(int mode) { _prevMode = _mode; _mode = mode; }
-int   Config::restoreMode(void) { _mode = _prevMode; return _mode; }
-void  Config::incMode(void) { 
-  int mode = getMode()+1;
-  setMode(mode%N_MODES);
-  P("changing mode to ");PL(modeNames[_mode]);
+int   Config::getNextMode(void) { return (_mode+1)%N_MODES; }
+void  Config::setMode(int mode) { 
+  P(NAME); P("setMode"); P("changing mode from");P(_mode);P("-->");PL(mode);
+  _mode = mode; 
 }
 
 int   Config::getFormat(void) { return _formats[_mode]; }
-int   Config::getFormat(int mode) { return _formats[mode]; }
-void  Config::setFormat(int format,int mode) { _formats[mode] = format; }
-void  Config::incFormat(void) {
-  int format = getFormat(_mode);
+int   Config::getNextFormat(void) {
+  int format = _formats[_mode[];
   format++;
   switch(_mode) {
-    case MODE_COUNTDOWN : _formats[MODE_COUNTDOWN] = format % 7; break;
-    case MODE_CLOCK   :  _formats[MODE_CLOCK]      = format % 11; break;
-    case MODE_DEMO    :  _formats[MODE_DEMO]       = format % 2; break;
-    case MODE_MESSAGE :  _formats[MODE_MESSAGE]    = format % 2; break;
+    case MODE_COUNTDOWN : return format % 7; break;
+    case MODE_COUNTUP   : return format % 7; break;
+    case MODE_CLOCK     : return format % 11; break;
+    case MODE_TEXT      : return format % 2; break;
     default: break;
   }
 }
-const String&   Config::getAPName(void) { return _apName;}
-void            Config::setAPName(const String& name) { _apName = name;}
-const String&   Config::getAPPassword(void) { return _apPassword;}
-void            Config::setAPPassword(const String& pw) { _apPassword = pw;}
 
 bool  Config::isTenthSecFormat(void) {
   bool rc;
   int format = _formats[_mode];
   switch(_mode) {
-    case MODE_COUNTDOWN : rc = (format==0) || (format==3); break;
-    case MODE_CLOCK :     rc = (format==5) || (format==9); break;
-    default : rc = false;
+    case MODE_COUNTUP : 
+    case MODE_COUNTDOWN : return (format==0) || (format==3); 
+    case MODE_CLOCK :     return (format==5) || (format==9);
+    default : return false;
   }
   return rc;
 }
@@ -71,16 +69,12 @@ bool  Config::isTenthSecFormat(void) {
 uint8_t Config::getBrightness(void) { return _brightness;}
 void    Config::setBrightness(uint8_t brightness) { _brightness = brightness;}
 
-void          Config::setMsgStart(const String& msg) { _msgStart = msg;}
-const String& Config::getMsgStart(void) { return _msgStart; }
-void          Config::setMsgEnd(const String& msg) { _msgEnd = msg;}
-const String& Config::getMsgEnd(void) { return _msgEnd; }
-
 void  Config::print(void) const {
   P("config:"); 
   SPACE; PVL(_msgStart);
-  SPACE; PVL(_msgEnd);
-  SPACE; PVL(_isoFuture);
+  SPACE; PVL(_msgFinal);
+  SPACE; PVL(_timeStart);
+  SPACE; PVL(_timeFinal);
   SPACE; Serial.printf("_brightness=0x%x\n",_brightness);
 
   SPACE; PV(_mode);

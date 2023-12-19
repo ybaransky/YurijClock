@@ -3,46 +3,39 @@
 class Config {
 
     public:
-        void    init(void);
+        void            init(void);
 
-        int     getMode(void);
-        int     restoreMode(void);
-        void    setMode(int mode);
-        void    incMode(void);
+        int             getMode(void);
+        int             getNextMode(void);
+        void            setMode(int mode);
 
-        int     getFormat(void);
-        int     getFormat(int);
-        void    setFormat(int,int);
-        void    incFormat(void);
-        bool    isTenthSecFormat(void);
+        int             getFormat(void);
+        int             getNextFormat(void);
+        void            setFormat(int mode);
+        bool            isTenthSecFormat(void);
 
-        uint8_t       getBrightness(void);
-        void          setBrightness(uint8_t);
+        void            saveFile(void);
+        void            print(void) const;
 
-        const String& getMsgStart(void);
-        void          setMsgStart(const String&);
-        const String& getMsgEnd(void);
-        void          setMsgEnd(const String&);
+        // when we are the access po
+        String          _apName;
+        String          _apPassword;
 
-        const String& getAPName(void);
-        void          setAPName(const String&);
+        // time string must be nn iso format (20 chars "2023-12-29T15:45:00")
+        String          _timeStart;     // if we are counting up, this t=0 (in the past)
+        String          _timeFinal;     // if we are counintg down, this is t=0 (in the future)
+        
+        // msg display, must be <= 12 chars
+        String          _msgStart;      // msg to say at bootup.   
+        String          _msgFinal;      // msg to say when countdown hits 0
 
-        const String& getAPPassword(void);
-        void          setAPPassword(const String&);
+        // what mode we are in (COUNTDOWN, COUNTUP, ..
+        int             _mode;
+        
+        // each mode has a set of formats
+        int             _formats[N_MODES];
 
-        void          saveFile(void);
-        void          print(void) const;
-
-        String  _isoFuture;                      // 20 chars iso format "2023-12-29T15:45:00"
-        String  _msgStart;  /// at most 12 chars
-        String  _msgEnd;
-        int     _format, _formats[N_MODES];
-        int     _mode, _prevMode;
         uint8_t _brightness;
-
-        String  _apName;
-        String  _apPassword;
-        String  _filename;
 };
 
 extern Config*  initConfig(void);
