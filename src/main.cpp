@@ -21,10 +21,7 @@ Display         *display;
 Config          *config;
 Timer           timer100ms;
 Timer           timer500ms;
-Message         message;
-Message         msgDemo;
-Message         msgStart;
-Message         msgFinal;
+String          message,msgDemo,msgStart,msgFinal;
 
 struct TickType {
   bool  sec;
@@ -33,13 +30,39 @@ struct TickType {
   TickType(void) : sec(false),ms100(false),ms500(false) {}
 };
 
-struct ModeState {
-  int       _mode;
+struct DemoMode {
+  void      start(const String& msg, int prevMode, ulong duration=5000);
+  void      stop(void);
+  bool      active(void) { return _active;}
+  bool      expired(ulong ms=0);
+  int       getPrevMode(void) { return _prevMode;}
+
+  ulong     _start;
+  ulong     _duration;
+  int       _prevMode;
   String    _msg;
-  bool      _blinking;
+  bool      _active;
 };
 
-ModeState   prevMode;
+void  DemoMode::start(const String& msg, int prevMode, ulong duration) {
+  _start = millis();
+  _msg   = msg; 
+  _prevMode = prevMode;
+  _duration = duration;
+  _active = true;
+  P("starting Demo Mode:");PVL(_msg);
+
+};
+void  DemoMode::stop(void) {_active = false;}
+bool  DemoMode::expired(ulong now) {
+  if (_active) {
+    if (!now) 
+      now = millis();
+    return now - _start > _duration;
+  }
+  return true;
+}
+DemoMode demoMode;
 
 /*
 **********************************************************************
@@ -80,7 +103,7 @@ void setup() {
   scheduler = initScheduler();
 
   // this is the startup message
-  message.set(config->_msgStart,true);
+  message = config->_msgStart;
 
   // get the rtc rtClock going, but is not found or working
   // then usef the soft rtClock, and set an error msg
@@ -88,7 +111,7 @@ void setup() {
   if (!rtClock->startTicking()) 
     clock1sec.enable();
   if (rtClock->lostPower()) {
-    message.set("LostPwr",true);
+    message = "Lost Pwr";
   }
 
   Serial.flush();
@@ -101,8 +124,10 @@ void setup() {
 
   // start the timer for the startup message
   // and then drop into the saved mode
-  timer500ms.start(500,5000);
-  prevMode._mode = config->_mode;
+  timer100ms.start(100);
+  timer500ms.start(500);
+  demoMode.start(message,config->getMode()); 
+  config->setMode(MODE_TEXT);
 }
 
 /*
@@ -126,11 +151,12 @@ void loop() {
     updateDisplay = true;
 
     dt = rtClock->now();  // only grab full date on second tick
-    timer100ms.start(100);  // start 1/10 second timer on a full second tick
+    timer100ms.reset();   // reset 1/10 second timer on a full second tick
 
     if (dt.second()%10==0) {
       config->print();
     }
+    P("1 sec ticl:"); PL(dt.timestamp());
   }
  
   // just the 1/10 second timer.
@@ -143,19 +169,13 @@ void loop() {
   // this is the msg blinking rate
   if (timer500ms.tick()) {
     tickType.ms500 = true;
-
-    if (message.isBlinking())
-      updateDisplay  = true;
+    updateDisplay  = true;
 
     // if there was a time limit, this must be start or demo style of text
-    if (timer500ms.finished()) {
-      timer500ms.stop();
-      config->setMode(prevMode._mode);
-      display->clear();
-      P(" Message over:  "); PL(message.text()); 
-      PL("**********************");
-      if (config->getMode() == MODE_MESSAGE) {
-        message = msgPerm;
+    if (demoMode.active()) {
+      if (demoMode.expired()) {
+        demoMode.stop();
+        config->setMode(demoMode.getPrevMode());
       }
     }
   }
@@ -164,8 +184,8 @@ void loop() {
     BUTTON_SINGLE_CLICK = false;
     PL("single button click ");
     config->setFormat(config->getNextFormat());
-//    display->refresh();
     config->print();
+    display->clear(); // in case we caught a blink
   }
 
   if (BUTTON_DOUBLE_CLICK) {
@@ -173,24 +193,22 @@ void loop() {
     PL("double button click");
     config->setMode(config->getNextMode());
     config->print();
-    if (config->getMode()) {
-      message = msgFinal;
-      if (message.isBlinking())
-        timer500ms.start(500);
-    }
     display->clear(); // in case we caught a blink
-    PL("*************************************************************");
+
+    if (config->getMode()==MODE_TEXT) {
+      message = msgFinal;
+      timer500ms.reset();
+    }
     PL("*************************************************************");
   }
 
-  if (LONG_BUTTON_CLICK) {
-    LONG_BUTTON_CLICK = false;
-    PL("Long button click");
-    config->setMode(MODE_DEMO);
+  if (BUTTON_LONG_CLICK) {
+    BUTTON_LONG_CLICK = false;
+    PL("Long button click sarting demo mode");
+    demoMode.start(msgDemo, config->getMode());
+    timer500ms.reset();
+    config->setMode(MODE_TEXT);
     config->print();
-    timer500ms.start(500,8000);
-    message = msgDemo;
-    message.print("main");
     /*
     DateTime dt(F(__DATE__),F(__TIME__));
     P("longPress"); P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
@@ -199,24 +217,22 @@ void loop() {
   }
 
  if (updateDisplay) {
-    int count;
+    int count = timer100ms.count();
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
-        count = timer100ms.count();
-        ts = TimeSpan(DateTime(config->_isoFuture.c_str()).unixtime() - dt.unixtime());
-//        Serial.printf("cuntdown: count=%s")
-        display->showCountDown(ts, count ? count : 10-count);
+        ts = TimeSpan(DateTime(config->_timeFinal.c_str()).unixtime() - dt.unixtime());
+        display->showCount(ts, count ? count : 10-count);
+        break;
+      case MODE_COUNTUP :
+        ts = TimeSpan(dt.unixtime() - DateTime(config->_timeStart.c_str()).unixtime());
+        display->showCount(ts, count);
         break;
       case MODE_CLOCK:
-        count = timer100ms.count();
         display->showClock(dt, count);
         break;
-      case MODE_MESSAGE:
-      case MODE_DEMO:
-        if (!tickType.ms100) { 
-          timer500ms.print("main:");
-          display->showText(message, timer500ms.finished() ? 1: timer500ms.count());
-        }
+      case MODE_TEXT:
+        // force blinking (for now)
+        display->showText(message, timer500ms.count()%2);
         break;
     }
   }

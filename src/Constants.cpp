@@ -38,7 +38,7 @@ const char* formatNamesClock[FORMAT_CLOCK] = {
   "   DD |    hh |    mm",
 };
 
-const char* formatNamesClock[FORMAT_CLOCK] = {
+const char* formatNamesText[FORMAT_CLOCK] = {
   " Left justified"
   "Right justified"
 };

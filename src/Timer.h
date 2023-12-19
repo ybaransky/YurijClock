@@ -3,11 +3,9 @@
 
 class Timer {
     public:
-        void        start(ulong period, ulong duration=0);
-        void        stop(void);
+        void        start(ulong period);
+        void        reset(void);
         bool        tick(void);
-        bool        active(void);
-        bool        finished(ulong now=0);
         int         count(void); 
 
         void        print(const char *msg);
@@ -18,6 +16,4 @@ class Timer {
         int      _count;
         ulong    _last;
         ulong    _start;
-        ulong    _duration;
 };
-

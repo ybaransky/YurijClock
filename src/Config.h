@@ -14,6 +14,7 @@ class Config {
         void            setFormat(int mode);
         bool            isTenthSecFormat(void);
 
+        const String&   getFilename();
         void            saveFile(void);
         void            print(void) const;
 
@@ -35,7 +36,8 @@ class Config {
         // each mode has a set of formats
         int             _formats[N_MODES];
 
-        uint8_t _brightness;
+        // all segments have the same brightness
+        uint8_t         _brightness;
 };
 
 extern Config*  initConfig(void);

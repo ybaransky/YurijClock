@@ -278,9 +278,9 @@ void handleConfigClock(void) {
   page += "<caption>Start/Stop Messages</caption>" + NL;
   page += "<col width='50%'><col width='50%'>" + NL;
   page += "<tr><th>Message</th><th>Text</th></tr>" + NL;
-  field = configPageInputText("msg0", config->getMsgStart().c_str(), 13); 
+  field = configPageInputText("msg0", config->_msgStart.c_str(), 13); 
   page += configPageInputRow("Start (0-12)", field);
-  field = configPageInputText("msg1", config->getMsgEnd().c_str(), 13); 
+  field = configPageInputText("msg1", config->_msgFinal.c_str(), 13); 
   page += configPageInputRow("End (0-12)", field);
   page += "</table><br>" + NL;
 
@@ -303,7 +303,7 @@ void handleConfigClock(void) {
   for(int i=0;i<N_SEGMENTS; i++) {
     char sv[32], brt[32],addr[32],desc[32];
     sprintf(brt,  "brt%d",i);
-    field1 = configPageInputNumber(brt , (int)config->getBrightness(), 2, 0, 15); 
+    field1 = configPageInputNumber(brt , config->_brightness, 2, 0, 15); 
     page  += configPageInputRow3Cols(desc , field0, field1, field2);
   }
   page  += "</table><br>" + NL;
@@ -312,9 +312,9 @@ void handleConfigClock(void) {
    */
   page += TABLE;
   page += "<caption>Access Point Wifi Settings</caption>" + NL;
-  field = configPageInputText("apn", config->getAPName().c_str(), 16); 
+  field = configPageInputText("apn", config->_apName.c_str(), 16); 
   page += configPageInputRow("AP Name", field);
-  field = configPageInputText("app", config->getAPPassword().c_str(), 16); 
+  field = configPageInputText("app", config->_apPassword.c_str(), 16); 
   page += configPageInputRow("AP Password", field);
   page += "</table><br>" + NL;
 
@@ -342,7 +342,7 @@ void handleConfigClock(void) {
 }
 
 void  handleConfigView(void) {
-  String filename(config->_filename);
+  String filename(config->getFilename());
   if (SPIFFS.exists(filename)) {
     String  context = "text/json";
     File file = SPIFFS.open(filename, "r");
@@ -376,7 +376,7 @@ void  handleConfigReboot(void) {
 }
 
 void  handleConfigDelete(void) {
-  const String&  path = config->_filename;
+  const String&  path = config->getFilename();
   String page = "";
   page += "<!doctype html>"    + NL;;
   page +=   "<html lang='en'>" + NL;;
@@ -398,6 +398,8 @@ void  handleConfigDelete(void) {
   server->send(200, "text/html", page); 
   return;
 }
+
+#ifdef YURIJ
 
 void handleConfigSave(void) {
   String page = "";
@@ -434,7 +436,6 @@ void handleConfigSave(void) {
 //  Serial.println(page);
   server->send(200, "text/html", page);
       
-  bool      visible[N_SEGMENTS] = {false,false,false};
   bool      changed = false;
   bool      changedTime = false;
   bool      periodic_save = false;
@@ -474,20 +475,21 @@ void handleConfigSave(void) {
       }
 
       else if (server->argName(i) == "msg0") {
-        config->setMsgStart(server->arg(i));
+        config->_msgStart = server->arg(i);
       }
 
       else if (server->argName(i) == "msg1") {
-        config->setMsgEnd(server->arg(i));
+        config->_msgFinal = server->arg(i);
       }
 
       else if (server->argName(i) == "brt") {
-        config->setBrightness(server->arg(i).toInt());
+        config->_brightness = server->arg(i).toInt();
         changedBrightness = true;
       }
 
-      else if (server->argName(i) == "dir") 
+      else if (server->argName(i) == "dir") {
         config->setMode(server->arg(i).toInt());
+      }
 
       else if (server->argName(i) == "pschk") {
         if (server->arg(i).equals("true"))
@@ -496,35 +498,29 @@ void handleConfigSave(void) {
        
       // wifi ap settings
       else if (server->argName(i) == "apn") {
-        config->setAPName(server->arg(i));
+        config->_apName = server->arg(i);
       }
 
       else if (server->argName(i) == "app")  {
-        config->setAPPassword(server->arg(i));
-      }
+        config->_apPassword = server->arg(i);
     } 
   }
 
-/*
-  if (changedTime) {
-    gClock.set_time(time);
-    gConfig.set_time(time);
-  }
-*/
   if (changedBrightness) {
     display->setBrightness();
     Serial.println("forcing new brightness");
   }
 
-  if (changed) 
+  if (changed) {
     config->saveFile();
-
+  }
+  
   if (server->arg("btn").equals("test")) {
     extern bool gTestMode;
     gTestMode = true;
     Serial.printf("handleConfiSave| trying test mode\n");
   }
 }
-
+#endif
 
  

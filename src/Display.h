@@ -2,24 +2,23 @@
 #include <RTClib.h>
 #include "Constants.h"
 #include "Segment.h"
-#include "Message.h"
 
 class Display {
 
   struct Cache {
     TimeSpan        _ts;
     DateTime        _dt;
-    uint8_t         _ms;  // 100 ms increments
-    Message         _msg;
+    String          _msg;
+    uint8_t         _tenth;  // 100 ms increments
 
     const TimeSpan&   ts(void) {return _ts;}
     const DateTime&   dt(void) {return _dt;}
-    uint8_t           ms(void) {return _ms;}
-    const Message&    msg(void) {return _msg;}
+    const String &    msg(void) {return _msg;}
+    uint8_t           tenth(void) {return _tenth;}
 
-    void   save(const TimeSpan& ts, uint8_t ms) { _ts=ts; _ms = ms;}
-    void   save(const DateTime& dt, uint8_t ms) { _dt=dt; _ms = ms;}
-    void   save(const Message& msg) { _msg = msg;}
+    void   save(const TimeSpan& ts, uint8_t tenth) { _ts=ts; _tenth = tenth;}
+    void   save(const DateTime& dt, uint8_t tenth) { _dt=dt; _tenth = tenth;}
+    void   save(const String& msg) { _msg = msg;}
   };
 
   public:
@@ -31,17 +30,30 @@ class Display {
     void    showInteger(int32_t);
     void    setBrightness();
 
-    void    showCountDown(const TimeSpan&, uint8_t=0);
-    void    showClock(const DateTime&, uint8_t=0);
-    void    showText(const Message&, uint32_t count);
-    void    refresh();
+    void    showCount(const TimeSpan&, uint8_t tenth=0);
+    void    showClock(const DateTime&, uint8_t tenth=0);
+    void    showText(const String&, bool visible);
 
   private:
+    void    showCountDDDD(const TimeSpan&);
+    void    showCountHHMM(const TimeSpan&);
+    void    showCountSSUU(const TimeSpan&, uint8_t tenth);
+    
+    void    showClockDDDD(const DateTime&);
+    void    showClockHHMM(const DateTime&);
+    void    showClockSSUU(const DateTime&, uint8_t tenth);
+
+    void    encode(char, char, char, char);
+    void    writeSegment(int,bool colon=false,bool visible=true); 
+
     Segment   _segments[N_SEGMENTS];
-    char      _message[13];
+    String    _text;
+    int       _format;
 
     // cache
     Cache     _cache;
+
+    uint8_t   _data[4];
 };
 
 extern Display* initDisplay(void);

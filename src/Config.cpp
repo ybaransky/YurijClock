@@ -3,7 +3,7 @@
 #include "Config.h"
 #include "Debug.h"
 
-#define FILENAME  "/coundown.json" 
+const static String configFilename("/coundown.json");
 
 #define DEFAULT_TIME_START    "2023-12-22T15:45:00"
 #define DEFAULT_TIME_FINAL      "2023-12-22T15:45:00"
@@ -26,7 +26,7 @@ void    Config::init(void) {
     _timeFinal = DEFAULT_TIME_FINAL;
 
     _msgStart = DEFAULT_MESSAGE_START;
-    _msgFinal   = DEFAULT_MESSAGE_END;
+    _msgFinal = DEFAULT_MESSAGE_FINAL;
 
     _mode   = MODE_COUNTDOWN;
     memset(_formats,0,sizeof(_formats));
@@ -34,24 +34,31 @@ void    Config::init(void) {
     _brightness = DEFAULT_BRIGHTNESS;
 }
 
+const String& Config::getFilename(void) { return configFilename;}
+
 int   Config::getMode(void) { return _mode;}
 int   Config::getNextMode(void) { return (_mode+1)%N_MODES; }
 void  Config::setMode(int mode) { 
-  P(NAME); P("setMode"); P("changing mode from");P(_mode);P("-->");PL(mode);
+  P(NAME); P("setMode"); P("changing mode from");
+  P(modeNames[_mode]);P("-->");PL(modeNames[mode]);
   _mode = mode; 
 }
 
 int   Config::getFormat(void) { return _formats[_mode]; }
 int   Config::getNextFormat(void) {
-  int format = _formats[_mode[];
+  int format = _formats[_mode];
   format++;
   switch(_mode) {
     case MODE_COUNTDOWN : return format % 7; break;
     case MODE_COUNTUP   : return format % 7; break;
     case MODE_CLOCK     : return format % 11; break;
     case MODE_TEXT      : return format % 2; break;
-    default: break;
+    default: return 0;
   }
+}
+void  Config::setFormat(int format) { 
+  P(NAME); P("setFormat"); P("changing mode from");P(_formats[_mode]);P("-->");PL(format);
+  _formats[_mode] = format;
 }
 
 bool  Config::isTenthSecFormat(void) {
@@ -66,18 +73,15 @@ bool  Config::isTenthSecFormat(void) {
   return rc;
 }
 
-uint8_t Config::getBrightness(void) { return _brightness;}
-void    Config::setBrightness(uint8_t brightness) { _brightness = brightness;}
-
 void  Config::print(void) const {
   P("config:"); 
-  SPACE; PVL(_msgStart);
-  SPACE; PVL(_msgFinal);
-  SPACE; PVL(_timeStart);
-  SPACE; PVL(_timeFinal);
-  SPACE; Serial.printf("_brightness=0x%x\n",_brightness);
+  PVL(_msgStart);
+  PVL(_msgFinal);
+  PVL(_timeStart);
+  PVL(_timeFinal);
+  Serial.printf("_brightness=0x%x\n",_brightness);
 
-  SPACE; PV(_mode);
+  PV(_mode);
   for(int i=0;i<N_MODES;i++) {
     P(",format["); P(i); P("]=");P(_formats[i]);
   }

@@ -6,8 +6,8 @@
 typedef TM1637Display Device;
  
 struct Digits {
-    int  d1000; int  d100; int  d10; int  d1;
-    char c1000; char c100; char c10; char c1;
+    int  d1000; int  d100; int  d10; int  d1; // decimal of the n-th dogot
+    char c1000; char c100; char c10; char c1; // character of the n-th digit
     Digits(int value=0);
     Digits(uint8_t value=0);
     void  set(int);
@@ -19,9 +19,10 @@ class Segment {
       bool    operator==(const Data&);
       Data&   operator=(const Data&);
 
-      void    init(void);
+      void    set(uint8_t*, uint8_t, bool);
+      void    init();
       void    reverse(void);
-   //   Data    operator+(const Data& data);
+      void    addColon(bool);
 
       uint8_t _buffer[4];
       uint8_t _brightness;
@@ -29,8 +30,10 @@ class Segment {
     };
 
     public:
-//      static  uint8_t* reverse(uint8_t*);
-//      static  char*    reverse(char*);
+        static  uint8_t  encodeChar(char);
+        static  uint8_t  encodeDigit(uint8_t);
+        static  char*    reverse(char*);
+        static  uint8_t* reverse(uint8_t*);
 
         void    init(int iam);
         Device& device(void);
@@ -47,12 +50,13 @@ class Segment {
 
         void    setBrightness(uint8_t);
         void    setVisible(bool);
+        void    write(uint8_t data[], bool colon, uint8_t brightness=7, bool visible=true);
 
     private:
         void    setSegment(bool colon=false,bool print=false);
         void    encode(char, char, char, char);
+        void    reverse(void);
 
         int     _iam;
-        Data    _data;
-        Data    _cache;
+        Data    _data,_cache;
 };

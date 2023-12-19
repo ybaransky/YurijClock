@@ -4,6 +4,141 @@
 #include "Encode.h"
 #include "Segment.h"
     
+static uint8_t asciEncoding[96] = {
+  /*       a
+   *      ---
+   *  f |  g | b
+   *      ---
+   *  e |    | c
+   *      ---
+   *       d
+   * a== bit 0... g==bit7
+   */
+
+ 	0b00000000, /* (space) this is 32 */
+ 	0b10000110, /* ! */
+ 	0b00100010, /* " */
+	0b01111110, /* # */
+  0b01101101, /* $ */
+  0b11010010, /* % */
+  0b01000110, /* & */
+	0b00100000, /* ' */
+	0b00101001, /* ( */
+	0b00001011, /* ) */
+	0b00100001, /* * */
+	0b01110000, /* + */
+	0b00010000, /* , */
+	0b01000000, /* - */
+	0b10000000, /* . */
+	0b01010010, /* / */
+	0b00111111, /* 0 */
+	0b00000110, /* 1 */
+	0b01011011, /* 2 */
+	0b01001111, /* 3 */
+	0b01100110, /* 4 */
+	0b01101101, /* 5 */
+	0b01111101, /* 6 */
+	0b00000111, /* 7 */
+	0b01111111, /* 8 */
+	0b01101111, /* 9 */
+	0b00001001, /* : */
+	0b00001101, /* ; */
+	0b01100001, /* < */
+	0b01001000, /* = */
+	0b01000011, /* > */
+	0b11010011, /* ? */
+	0b01011111, /* @ */
+	0b01110111, /* A */
+	0b01111100, /* B */
+	0b00111001, /* C */
+	0b01011110, /* D */
+	0b01111001, /* E */
+	0b01110001, /* F */
+	0b00111101, /* G */
+	0b01110110, /* H */
+	0b00110000, /* I */
+	0b00011110, /* J */
+	0b01110101, /* K */
+	0b00111000, /* L */
+	0b00010101, /* M */
+	0b00110111, /* N */
+	0b00111111, /* O */
+	0b01110011, /* P */
+	0b01101011, /* Q */
+	0b00110011, /* R */
+	0b01101101, /* S */
+	0b01111000, /* T */
+	0b00111110, /* U */
+	0b00111110, /* V */
+	0b00101010, /* W */
+	0b01110110, /* X */
+	0b01101110, /* Y */
+	0b01011011, /* Z */
+	0b00111001, /* [ */
+	0b01100100, /* \ */
+	0b00001111, /* ] */
+	0b00100011, /* ^ */
+	0b00001000, /* _ */
+	0b00000010, /* ` */
+	0b01011111, /* a */
+	0b01111100, /* b */
+	0b01011000, /* c */
+	0b01011110, /* d */
+	0b01111011, /* e */
+	0b01110001, /* f */
+	0b01101111, /* g */
+	0b01110100, /* h */
+	0b00010000, /* i */
+	0b00001100, /* j */
+	0b01110101, /* k */
+	0b00110000, /* l */
+	0b00010100, /* m */
+	0b01010100, /* n */
+	0b01011100, /* o */
+	0b01110011, /* p */
+	0b01100111, /* q */
+	0b01010000, /* r */
+	0b01101101, /* s */
+	0b01111000, /* t */
+	0b00011100, /* u */
+	0b00011100, /* v */
+	0b00010100, /* w */
+	0b01110110, /* x */
+	0b01101110, /* y */
+	0b01011011, /* z */
+	0b01000110, /* { */
+	0b00110000, /* | */
+	0b01110000, /* } */
+	0b00000001, /* ~ */
+	0b00000000, /* (del) */
+};
+ 
+uint8_t Segment::encodeDigit(uint8_t i) {
+	if (i > 9) i = 0;
+   return asciEncoding[16+i];
+}
+
+uint8_t Segment::encodeChar(char c) {
+   if ((c < 32) || (c > (96+32))) c = 32;
+   return asciEncoding[c-32];
+}
+
+uint8_t*	Segment::reverse(uint8_t *data) {
+  uint8_t tmp[DIGITS_PER_SEGMENT];
+  memcpy(tmp,data,sizeof(tmp));
+  for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
+    data[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
+  return data;
+}
+
+char*	Segment::reverse(char* data) {
+  char tmp[DIGITS_PER_SEGMENT];
+  memcpy(tmp,data,sizeof(tmp));
+  for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
+    data[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
+  return data;
+}
+
 /*
     countdown display modes
     "0 dd D | hh:mm |  ss u",
@@ -32,7 +167,7 @@
     "11    DD |    hh | mm:ss",
     "12    DD |    hh |    mm",
 */
- 
+
 /*
 *************************************************************************
 *  Segment Statics
@@ -81,11 +216,25 @@ void  Digits::set(int value) {
 *************************************************************************
 */
 void  Segment::Data::init(void) {
-  _visible = true;
-  _brightness = 0;
+  _visible    = true;
+  _brightness = 7;
   memset(_buffer, 0, sizeof(_buffer));
-
 }
+void  Segment::Data::set(uint8_t data[], uint8_t brightness, bool visible) {
+  memcpy(_buffer, data, sizeof(_buffer));
+  _brightness = brightness;
+  _visible    = visible;
+}
+void  Segment::Data::addColon(bool colon) {
+  if (!colon) return;
+  uint8_t dots = 0x40;
+  for(int i = 0; i < DIGITS_PER_SEGMENT; ++i) {
+	  _buffer[i] |= (dots & 0x80);
+	  dots <<= 1;
+	}
+}
+
+
 void 	Segment::Data::reverse(void) {
   uint8_t tmp[DIGITS_PER_SEGMENT];
   memcpy(tmp,_buffer,sizeof(_buffer));
@@ -119,12 +268,12 @@ bool  Segment::Data::operator==(const Segment::Data& data) {
 
 Device& Segment::device() { return sDevices[_iam];}
 void    Segment::init(int iam) { 
-    _iam = iam; 
-    _data.init();
+  _iam = iam; 
+  _data.init();
 }
 
 void    Segment::setBrightness(uint8_t brightness) {
-    _data._brightness = brightness;
+  _data._brightness = brightness;
 //    device().setBrightness(_data._brightness, _data._visible);
 }
 
@@ -365,3 +514,14 @@ void  Segment::encode(char c3, char c2, char c1, char c0) {
   _data._buffer[1] = encodeChar(c1);
   _data._buffer[0] = encodeChar(c0);
 }
+void  Segment::write(uint8_t data[], bool colon, uint8_t brightness, bool visible) {
+  _data.set(data,brightness,visible);
+  _data.reverse();
+  _data.addColon(colon);
+
+  if (_data == _cache) return;
+
+  Device& hardware = device();
+  hardware.setBrightness(brightness,visible);
+  hardware.setSegments(data);
+};
