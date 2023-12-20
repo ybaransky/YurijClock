@@ -123,15 +123,14 @@ uint8_t Segment::encodeChar(char c) {
    return asciEncoding[c-32];
 }
 
-uint8_t*	Segment::reverse(uint8_t *data) {
+static void reverse(uint8_t *data) {
   uint8_t tmp[DIGITS_PER_SEGMENT];
   memcpy(tmp,data,sizeof(tmp));
   for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
     data[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
-  return data;
 }
 
-char*	Segment::reverse(char* data) {
+static char*	reverse(char* data) {
   char tmp[DIGITS_PER_SEGMENT];
   memcpy(tmp,data,sizeof(tmp));
   for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
@@ -225,22 +224,15 @@ void  Segment::Data::set(uint8_t data[], uint8_t brightness, bool visible) {
   _brightness = brightness;
   _visible    = visible;
 }
-void  Segment::Data::addColon(bool colon) {
-  if (!colon) return;
+static void  addColon(uint8_t data[]) {
   uint8_t dots = 0x40;
   for(int i = 0; i < DIGITS_PER_SEGMENT; ++i) {
-	  _buffer[i] |= (dots & 0x80);
+	  data[i] |= (dots & 0x80);
 	  dots <<= 1;
 	}
 }
 
 
-void 	Segment::Data::reverse(void) {
-  uint8_t tmp[DIGITS_PER_SEGMENT];
-  memcpy(tmp,_buffer,sizeof(_buffer));
-  for(int i=0; i<DIGITS_PER_SEGMENT; i++)  
-    _buffer[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
-}
 
 Segment::Data& Segment::Data::operator=(const Segment::Data& data) {
   _visible = data._visible;
@@ -484,7 +476,7 @@ void  Segment::drawText(char* text, bool visible) {
 }
 
 void	Segment::setSegment(bool colon, bool print) {
-	_data.reverse();
+	reverse(_data._buffer);
 	if (colon) {
 		uint8_t dots = 0x40;
   	for(int i = 0; i < DIGITS_PER_SEGMENT; ++i) {
@@ -516,10 +508,10 @@ void  Segment::encode(char c3, char c2, char c1, char c0) {
 }
 void  Segment::write(uint8_t data[], bool colon, uint8_t brightness, bool visible) {
   _data.set(data,brightness,visible);
-  _data.reverse();
-  _data.addColon(colon);
+  reverse(data);
+  if (colon) addColon(data);
 
-  if (_data == _cache) return;
+ // if (_data == _cache) return;
 
   Device& hardware = device();
   hardware.setBrightness(brightness,visible);

@@ -121,6 +121,7 @@ uint8_t encodeChar(char c) {
    return asciEncoding[c-32];
 }
 
+/*
 uint8_t*	reverse(uint8_t *data) {
   uint8_t tmp[DIGITS_PER_SEGMENT];
   memcpy(tmp,data,sizeof(tmp));
@@ -136,3 +137,4 @@ char*	reverse(char* data) {
     data[i] = tmp[DIGITS_PER_SEGMENT-1 - i];
   return data;
 }
+*/

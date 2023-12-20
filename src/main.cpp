@@ -156,7 +156,9 @@ void loop() {
     if (dt.second()%10==0) {
       config->print();
     }
-    P("1 sec ticl:"); PL(dt.timestamp());
+    if (!dt.second()%5) {
+      PL(dt.timestamp());
+    }
   }
  
   // just the 1/10 second timer.

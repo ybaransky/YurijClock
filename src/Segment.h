@@ -21,8 +21,6 @@ class Segment {
 
       void    set(uint8_t*, uint8_t, bool);
       void    init();
-      void    reverse(void);
-      void    addColon(bool);
 
       uint8_t _buffer[4];
       uint8_t _brightness;
@@ -32,8 +30,6 @@ class Segment {
     public:
         static  uint8_t  encodeChar(char);
         static  uint8_t  encodeDigit(uint8_t);
-        static  char*    reverse(char*);
-        static  uint8_t* reverse(uint8_t*);
 
         void    init(int iam);
         Device& device(void);
@@ -55,7 +51,6 @@ class Segment {
     private:
         void    setSegment(bool colon=false,bool print=false);
         void    encode(char, char, char, char);
-        void    reverse(void);
 
         int     _iam;
         Data    _data,_cache;

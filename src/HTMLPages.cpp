@@ -11,6 +11,7 @@ extern Display* display;
 extern RTClock* rtClock;
 extern Config*  config;
 
+#ifdef YURIJ
 extern  std::unique_ptr<ESP8266WebServer> server; 
 static  const String     NL("\r\n");
 static  const String     EMPTY("");
@@ -399,7 +400,6 @@ void  handleConfigDelete(void) {
   return;
 }
 
-#ifdef YURIJ
 
 void handleConfigSave(void) {
   String page = "";
