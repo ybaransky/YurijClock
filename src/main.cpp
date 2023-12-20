@@ -21,7 +21,7 @@ Display         *display;
 Config          *config;
 Timer           timer100ms;
 Timer           timer500ms;
-String          message,msgDemo,msgStart,msgFinal;
+String          message,msgDemo,msgFinal;
 
 struct TickType {
   bool  sec;
@@ -31,25 +31,29 @@ struct TickType {
 };
 
 struct DemoMode {
-  void      start(const String& msg, int prevMode, ulong duration=5000);
+  DemoMode() : _active(false) {}
+  void      start(const String& msg, int prevMode, bool blinking=false, ulong duration=5000);
   void      stop(void);
   bool      active(void) { return _active;}
   bool      expired(ulong ms=0);
   int       getPrevMode(void) { return _prevMode;}
+  bool      blinking(void) { return _blinking;}
 
   ulong     _start;
   ulong     _duration;
   int       _prevMode;
   String    _msg;
   bool      _active;
+  bool      _blinking;
 };
 
-void  DemoMode::start(const String& msg, int prevMode, ulong duration) {
-  _start = millis();
-  _msg   = msg; 
+void  DemoMode::start(const String& msg, int prevMode, bool blinking, ulong duration) {
+  _start    = millis();
+  _msg      = msg; 
   _prevMode = prevMode;
   _duration = duration;
-  _active = true;
+  _active   = true;
+  _blinking = blinking;
   P("starting Demo Mode:");PVL(_msg);
 
 };
@@ -126,7 +130,7 @@ void setup() {
   // and then drop into the saved mode
   timer100ms.start(100);
   timer500ms.start(500);
-  demoMode.start(message,config->getMode()); 
+  demoMode.start(message,config->getMode(),false,1000); 
   config->setMode(MODE_TEXT);
 }
 
@@ -138,6 +142,7 @@ void setup() {
 
 void loop() {
   bool updateDisplay = false;
+  bool visible;
   TickType tickType;
   static TimeSpan ts;
   static DateTime dt;
@@ -156,9 +161,7 @@ void loop() {
     if (dt.second()%10==0) {
       config->print();
     }
-    if (!dt.second()%5) {
-      PL(dt.timestamp());
-    }
+    P(dt.timestamp()); PL(modeNames[config->getMode()]);
   }
  
   // just the 1/10 second timer.
@@ -187,7 +190,7 @@ void loop() {
     PL("single button click ");
     config->setFormat(config->getNextFormat());
     config->print();
-    display->clear(); // in case we caught a blink
+//    display->clear(); // in case we caught a blink
   }
 
   if (BUTTON_DOUBLE_CLICK) {
@@ -195,11 +198,12 @@ void loop() {
     PL("double button click");
     config->setMode(config->getNextMode());
     config->print();
-    display->clear(); // in case we caught a blink
+//    display->clear(); // in case we caught a blink
 
     if (config->getMode()==MODE_TEXT) {
-      message = msgFinal;
+      message = config->_msgFinal;
       timer500ms.reset();
+      P("setting to test mode... ");PVL(message);
     }
     PL("*************************************************************");
   }
@@ -223,7 +227,7 @@ void loop() {
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
         ts = TimeSpan(DateTime(config->_timeFinal.c_str()).unixtime() - dt.unixtime());
-        display->showCount(ts, count ? count : 10-count);
+        display->showCount(ts, count ? 10-count : count);
         break;
       case MODE_COUNTUP :
         ts = TimeSpan(dt.unixtime() - DateTime(config->_timeStart.c_str()).unixtime());
@@ -233,8 +237,9 @@ void loop() {
         display->showClock(dt, count);
         break;
       case MODE_TEXT:
-        // force blinking (for now)
-        display->showText(message, timer500ms.count()%2);
+        visible = (demoMode.active() && demoMode.blinking()) ? timer500ms.count()%2 : true;
+        P("TEXT"); P(message); PVL(visible);
+        display->showText(message, visible);
         break;
     }
   }

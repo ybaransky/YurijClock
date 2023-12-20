@@ -5,8 +5,8 @@
 
 const static String configFilename("/coundown.json");
 
-#define DEFAULT_TIME_START    "2023-12-22T15:45:00"
-#define DEFAULT_TIME_FINAL      "2023-12-22T15:45:00"
+#define DEFAULT_TIME_START    "2023-12-12T15:45:00"
+#define DEFAULT_TIME_FINAL    "2023-12-22T15:45:00"
 
 #define DEFAULT_MESSAGE_START "YuriCloc"
 #define DEFAULT_MESSAGE_FINAL "Good Luc"
@@ -57,7 +57,8 @@ int   Config::getNextFormat(void) {
   }
 }
 void  Config::setFormat(int format) { 
-  P(NAME); P("setFormat"); P("changing mode from");P(_formats[_mode]);P("-->");PL(format);
+  P(NAME); P("setFormat"); P("changing format from");
+  P(_formats[_mode]); P("-->"); PL(format);
   _formats[_mode] = format;
 }
 
