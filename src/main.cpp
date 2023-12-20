@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <TaskScheduler.h>
+#include "Action.h"
 #include "Button.h"
 #include "Debug.h"
 #include "Constants.h"
@@ -21,7 +22,8 @@ Display         *display;
 Config          *config;
 Timer           timer100ms;
 Timer           timer500ms;
-String          message,msgDemo,msgFinal;
+String          message;
+Action          action;
 
 struct TickType {
   bool  sec;
@@ -29,44 +31,6 @@ struct TickType {
   bool  ms500;
   TickType(void) : sec(false),ms100(false),ms500(false) {}
 };
-
-struct DemoMode {
-  DemoMode() : _active(false) {}
-  void      start(const String& msg, int prevMode, bool blinking=false, ulong duration=5000);
-  void      stop(void);
-  bool      active(void) { return _active;}
-  bool      expired(ulong ms=0);
-  int       getPrevMode(void) { return _prevMode;}
-  bool      blinking(void) { return _blinking;}
-
-  ulong     _start;
-  ulong     _duration;
-  int       _prevMode;
-  String    _msg;
-  bool      _active;
-  bool      _blinking;
-};
-
-void  DemoMode::start(const String& msg, int prevMode, bool blinking, ulong duration) {
-  _start    = millis();
-  _msg      = msg; 
-  _prevMode = prevMode;
-  _duration = duration;
-  _active   = true;
-  _blinking = blinking;
-  P("starting Demo Mode:");PVL(_msg);
-
-};
-void  DemoMode::stop(void) {_active = false;}
-bool  DemoMode::expired(ulong now) {
-  if (_active) {
-    if (!now) 
-      now = millis();
-    return now - _start > _duration;
-  }
-  return true;
-}
-DemoMode demoMode;
 
 /*
 **********************************************************************
@@ -124,13 +88,13 @@ void setup() {
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
   config->print();
-  display->test();
+  //display->test();
 
   // start the timer for the startup message
   // and then drop into the saved mode
   timer100ms.start(100);
   timer500ms.start(500);
-  demoMode.start(message,config->getMode(),false,1000); 
+  action.splash(message,config->getMode(),1000); 
   config->setMode(MODE_TEXT);
 }
 
@@ -158,10 +122,14 @@ void loop() {
     dt = rtClock->now();  // only grab full date on second tick
     timer100ms.reset();   // reset 1/10 second timer on a full second tick
 
+    /*
     if (dt.second()%10==0) {
       config->print();
     }
-    P(dt.timestamp()); PL(modeNames[config->getMode()]);
+    */
+    if (dt.second()%2==0) {
+      P(dt.timestamp()); PL(modeNames[config->getMode()]);
+    }
   }
  
   // just the 1/10 second timer.
@@ -175,13 +143,12 @@ void loop() {
   if (timer500ms.tick()) {
     tickType.ms500 = true;
     updateDisplay  = true;
+  }
 
-    // if there was a time limit, this must be start or demo style of text
-    if (demoMode.active()) {
-      if (demoMode.expired()) {
-        demoMode.stop();
-        config->setMode(demoMode.getPrevMode());
-      }
+  if (action.active()) {
+    if (action.expired()) {
+      action.stop();
+      config->setMode(action.getPrevMode());
     }
   }
  
@@ -211,10 +178,11 @@ void loop() {
   if (BUTTON_LONG_CLICK) {
     BUTTON_LONG_CLICK = false;
     PL("Long button click sarting demo mode");
-    demoMode.start(msgDemo, config->getMode());
-    timer500ms.reset();
-    config->setMode(MODE_TEXT);
+    action.demo(config->_msgFinal, config->getMode(), dt);
+    action.print("***** starting action: ");
+    config->setMode(MODE_COUNTDOWN);
     config->print();
+    timer500ms.reset();
     /*
     DateTime dt(F(__DATE__),F(__TIME__));
     P("longPress"); P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
@@ -224,10 +192,18 @@ void loop() {
 
  if (updateDisplay) {
     int count = timer100ms.count();
+    DateTime expireTime;
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
-        ts = TimeSpan(DateTime(config->_timeFinal.c_str()).unixtime() - dt.unixtime());
+        if (action.active()) {
+          expireTime = action.getExpireTime();
+        } else {
+          expireTime = DateTime(config->_timeFinal.c_str());
+        }
+        ts = TimeSpan(expireTime.unixtime() - dt.unixtime());
         display->showCount(ts, count ? 10-count : count);
+        if (expireTime <= dt)
+          config->setMode(MODE_TEXT);
         break;
       case MODE_COUNTUP :
         ts = TimeSpan(dt.unixtime() - DateTime(config->_timeStart.c_str()).unixtime());
@@ -237,8 +213,14 @@ void loop() {
         display->showClock(dt, count);
         break;
       case MODE_TEXT:
-        visible = (demoMode.active() && demoMode.blinking()) ? timer500ms.count()%2 : true;
-        P("TEXT"); P(message); PVL(visible);
+        if (action.active()) {
+            message = action.getMsg();
+            visible = action.isBlinking() ? timer500ms.count()%2 : true;
+            action.print();
+        } else {
+          message = config->_msgFinal;
+          visible = true;
+        }
         display->showText(message, visible);
         break;
     }

@@ -132,11 +132,13 @@ void  Display::showCountDDDD(const TimeSpan& ts, int format) {
     if (showD) {
       if (days.d100)     encode(data, days.c100, days.c10, days.c1, dchar);
       else if (days.d10) encode(data,  days.c10,  days.c1,   space, dchar);
-      else               encode(data,     space,  days.c1,   space, dchar); 
+      else if (days.d1)  encode(data,     space,  days.c1,   space, dchar);
+      else               encode(data,     space,    space,   space, space); 
     } else {
       if (days.d100)     encode(data, space, days.c100, days.c10, days.c1);
       else if (days.d10) encode(data, space,     space, days.c10, days.c1);
-      else               encode(data, space,     space,    space, days.c1); 
+      else if (days.d1)  encode(data, space,     space,    space, days.c1); 
+      else               encode(data, space,     space,    space,   space); 
     }
   }
   writeSegment(DDDD,data);
@@ -151,15 +153,20 @@ void  Display::showCountHHMM(const TimeSpan& ts, int format) {
   bool    showHoursMins = (format==0) || (format==1) || (format==4) || (format==5);
   bool    colon         = showHoursMins;
 
-	if (showHoursMins) {
-    if (hours.d10) encode(data, hours.c10, hours.c1, mins.c10, mins.c1);
-    else           encode(data,     space, hours.c1, mins.c10, mins.c1);
-  } else if (showHoursH) {
-    if (hours.d10) encode(data, hours.c10, hours.c1, space, hchar);
-    else           encode(data,     space, hours.c1, space, hchar);
-  } else if (showHours) {
-    if (hours.d10) encode(data, space, space, hours.c10, hours.c1);
-    else           encode(data, space, space,     space, hours.c1);
+  if ((ts.hours()==0) && (ts.minutes()==0)) {
+     encode(data,     space, space, space, space);
+     colon = false;
+  } else {
+  	if (showHoursMins) {
+      if (hours.d10)  encode(data, hours.c10, hours.c1, mins.c10, mins.c1);
+      else            encode(data,     space, hours.c1, mins.c10, mins.c1);
+    } else if (showHoursH) {
+      if (hours.d10) encode(data, hours.c10, hours.c1, space, hchar);
+      else           encode(data,     space, hours.c1, space, hchar);
+    } else if (showHours) {
+      if (hours.d10) encode(data, space, space, hours.c10, hours.c1);
+      else           encode(data, space, space,     space, hours.c1);
+    }
   }
   writeSegment(HHMM,data,colon);
 };
