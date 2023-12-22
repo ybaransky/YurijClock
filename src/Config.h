@@ -10,7 +10,8 @@ class Config {
         int             getNextMode(void);
         void            setMode(int mode);
 
-        int             getFormat(void);
+        int             getFormat(void);       // gets current mode format
+        int             getFormat(int mode);   // gets mode format
         int             getNextFormat(void);
         void            setFormat(int mode);
         bool            isTenthSecFormat(void);

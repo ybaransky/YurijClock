@@ -55,6 +55,7 @@ void  Config::setMode(int mode) {
   _mode = mode; 
 }
 
+int   Config::getFormat(int mode) { return _formats[mode]; }
 int   Config::getFormat(void) { return _formats[_mode]; }
 int   Config::getNextFormat(void) {
   int format = _formats[_mode];

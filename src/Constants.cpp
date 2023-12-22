@@ -44,7 +44,7 @@ const char *formatNames[] = {
 };
 #endif
 
-const char* formatNamesCountdown[FORMAT_COUNTDOWN] = {
+const char* formatNamesCountDown[N_FORMAT_COUNTDOWN] = {
   "dd D | hh:mm |  ss.u",
   "dd D | hh:mm |    ss",
   "dd D | hh  H | mm:ss",
@@ -55,7 +55,7 @@ const char* formatNamesCountdown[FORMAT_COUNTDOWN] = {
   "  dd |    hh |    mm"
 };
 
-const char* formatNamesCountup[FORMAT_COUNTUP] = {
+const char* formatNamesCountUp[N_FORMAT_COUNTUP] = {
   "dd D | hh:mm |  ss.u",
   "dd D | hh:mm |    ss",
   "dd D | hh  H | mm:ss",
@@ -66,7 +66,7 @@ const char* formatNamesCountup[FORMAT_COUNTUP] = {
   "  dd |    hh |    mm"
 }; 
 
-const char* formatNamesClock[FORMAT_CLOCK] = {
+const char* formatNamesClock[N_FORMAT_CLOCK] = {
   " YYYY | MM:DD | hh:mm",  // blinking hh:mm colon
   " YYYY | MM:DD | hh:mm",
   " YYYY |    MM |    DD",
@@ -82,12 +82,12 @@ const char* formatNamesClock[FORMAT_CLOCK] = {
   "   DD |    hh |    mm",
 };
 
-const char* formatNamesText[FORMAT_CLOCK] = {
+const char* formatNamesText[N_FORMAT_CLOCK] = {
   " Left justified",
   "Right justified"
 };
 
-const char** formatNames[N_MODES] = {formatNamesCountdown, formatNamesCountup, formatNamesClock, formatNamesText};
+const char** formatNames[N_MODES] = {formatNamesCountDown, formatNamesCountUp, formatNamesClock, formatNamesText};
 
 const char* modeNames[N_MODES] = {
   "Countdown", 

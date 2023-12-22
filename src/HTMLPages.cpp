@@ -41,6 +41,67 @@ static  const char  STYLE_HEAD[] PROGMEM = R"(
 </head>
 )";
 
+static
+String inputFieldText(const char* id, const String& text, int size=0) 
+{
+  String input = NL;
+  String sid(id);
+  String ssize(size);
+  input += "<input ";
+  input += "type='text' ";
+  input += "id='"          + sid   + "' ";
+  input += "name='"        + sid   + "' ";
+  input += "placeholder='" + text  + "' ";
+  if (size) {
+    input += "maxlength="    + ssize + " ";
+    input += "size="         + ssize + " ";
+  }
+  input += ">";
+  return input;
+}
+
+static 
+String inputFieldComboBox(const char* id, const char* choices[], int ichoice, int n) {
+  String input = NL;
+  if (ichoice <  0) ichoice = 0;
+  if (ichoice >= n) ichoice = 0;
+//  input += "<div style='height:100%'>";
+  input += "<select name='" + String(id) + "'>";
+  for(int i=0;i<n;i++) {
+    input += "<option value='" + String(i) + "'";
+    if (i==ichoice)
+      input += " selected";
+    input += ">" + String(choices[i]) + "</option>";
+  }
+//  input += "</div>";
+  return input;
+}
+
+static
+String inputFieldDateTime(const char* id, const String& text)
+{
+  String input = NL;
+  String sid(id);
+  input += "<input ";
+  input += "type='datetime-local' ";
+  input += "id='"          + sid   + "' ";
+  input += "name='"        + sid   + "' ";
+  input += "value='"       + text  + "' ";
+  input += "min='2000-06-07T00:00' max='2035-06-14T00:00'";
+  input += ">";
+  return input;
+}
+
+static 
+String addInputRow(const char* desc, const String& value) {
+  String row("");
+  row += "<tr>";
+  row += "<td class='right border grey'>" + String(desc) + "</td><td class='left border'>" + value + "</td>";
+  row += "</tr>" + NL;
+  return row;
+}
+
+
 //"th,td   {width:33%; padding-left: 5px; padding-right: 5px; border:1px solid blue}\r\n" 
 //
 static 
@@ -198,10 +259,6 @@ String configPageInputRadio(
 }
 
 
-
-
-
-
 void handleConfigClock(void) {
   DateTime dt = rtClock->now();
   String now = dt.timestamp();
@@ -213,9 +270,73 @@ void handleConfigClock(void) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
 */
+  String field;
   String TABLE = "<table width='95%' align='center'>" + NL;
-  String page = R"(
-<!DOCTYPE html>
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>Countdown Clock</h3><hr><br>
+
+  <form action="/get" method ="GET">
+
+  <table width='95%' align='center'>
+  <caption>Start/Final Message</caption>
+  <col width='50%'><col width='50%'>)";
+
+  page += R"(<tr><th>Message</th><th>Text</th></tr>)";
+  field = inputFieldText("msgStart", config->_msgStart, 13);
+  page += addInputRow("Start (0-12)", field);
+  field = inputFieldText("msgEnd", config->_msgFinal, 13);
+  page += addInputRow("Final (0-12)", field);
+  page += R"(</table><br>)";
+
+  page += R"(<table width='95%' align='center'>
+  <caption>Countdown Mode</caption>
+  <col width='50%'><col width='50%'>
+  <tr><th>Setting</th><th>Value</th></tr>)";
+  field = inputFieldComboBox("downFormat",
+    formatNamesCountDown,config->getFormat(MODE_COUNTDOWN),N_FORMAT_COUNTDOWN);
+  page += addInputRow("Clock style", field);
+
+  String future( (rtClock->now() + TimeSpan(365*24*60*60)).timestamp());
+  future.remove(future.length()-3); // get rid of the seconds
+  field = inputFieldDateTime("downTime",future);
+  page += addInputRow("Future time", field);
+  page += R"(</table><br>)";
+
+  page += R"(
+    <p>
+    <label for="input1">Input 1:</label>
+    <input type="text" id="input1" name="input1">
+    <label for="countdown-time">Countdown to: </label>
+    <input type="datetime-local" id="countdown-time" name="countdown-time" value=)";
+
+page += "\"" + now + "\" ";
+page += R"(min="2000-06-07T00:00" max="2035-06-14T00:00"/><br><p>)";
+
+page += R"(<button type='submit' name='btn' value='save' >Save</button>
+    </p>
+  </form>
+</body> 
+<script>
+  var datetime = new Date();
+  var isoString = datetime.toISOString();
+  document.getElementById("input1").value = isoString.substr(0,isoString.length-5)
+</script>
+</html>)";
+
+// page += R"(<input type="submit" value="Submit">
+  PL("about to send from cnfig page");
+  PL(page);
+  PL(page.length());
+  //server->send(200, "text/html", "Hello World");
+  server->send(200, "text/html", page);
+  return;
+
+
+#ifdef YURIJ
 <html><head>
   <meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>
   <title>Countdown Setup</title>
@@ -233,37 +354,8 @@ void handleConfigClock(void) {
     input[type='text'], input[type='number'] {font-size:100%; border:2px solid red}
   </style>
 </head>
-  <body>
-    <p>Temperature is 32.26 ºC</p>
-    <p>Temperature is 32.26 &deg;C</p>
-    <p>Temperature is 32.26 &#x000b0;C</p>
-    <p>Temperature is 32.26 &#176;C</p> 
-    
-    <form action="/get" method ="GET">
-      <p>
-      <label for="input1">Input 1:</label>
-      <input type="text" id="input1" name="input1">
-      <label for="countdown-time">Countdown to: </label>
-      <input type="datetime-local" id="countdown-time" name="countdown-time" value=)";
-page += "\"" + now + "\" ";
-page += R"(min="2000-06-07T00:00" max="2035-06-14T00:00"/><br>)";
-page += R"(<button type='submit' name='btn' value='save' >Save</button>)
-      </p>
-    </form>
-  </body> 
-</html>)";
 
-// page += R"(<input type="submit" value="Submit">
-  PL("about to send from cnfig page");
-  PL(page);
-  PL(page.length());
-  //server->send(200, "text/html", "Hello World");
-  server->send(200, "text/html", page);
-  return;
-
-
-#ifdef YURIJ
-  String page = R"(
+ String page = R"(
 <!doctype html>
   <html lang='en'>)";
   page += FPSTR(STYLE_HEAD);
@@ -611,6 +703,50 @@ document.getElementById("time").textContent = datetime;
 
 )";
   return page;
+}
+
+void handleSyncTime() {
+  DateTime dt = rtClock->now();
+  String now = dt.timestamp();
+  now.remove(now.length()-3); // get rid of the seconds
+
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <p>Temperature is 32.26 ºC</p>
+  <p>Temperature is 32.26 &deg;C</p>
+  <p>Temperature is 32.26 &#x000b0;C</p>
+  <p>Temperature is 32.26 &#176;C</p> 
+  <p>Client Time = <span id="isodt"> </span></p>
+
+  <form action="/get" method ="GET">
+    <p>
+    <label for="input1">Input 1:</label>
+    <input type="text" id="input1" name="input1">
+    <label for="countdown-time">Countdown to: </label>
+    <input type="datetime-local" id="countdown-time" name="countdown-time" value=)";
+page += "\"" + now + "\" ";
+page += R"(min="2000-06-07T00:00" max="2035-06-14T00:00"/><br>)";
+page += R"(<p>)";
+page += R"(<button type='submit' name='btn' value='save' >Save</button>
+    </p>
+  </form>
+</body> 
+<script>
+  var datetime = new Date();
+  document.getElementById("isodt").textContent = datetime;
+  var isoString = datetime.toISOString();
+  document.getElementById("input1").value = isoString.substr(0,isoString.length-5)
+</script>
+</html>)";
+
+// page += R"(<input type="submit" value="Submit">
+  PL("about to send from cnfig page");
+  PL(page);
+  PL(page.length());
+  //server->send(200, "text/html", "Hello World");
+  server->send(200, "text/html", page);
 }
 
 void handleConfigGet() {
