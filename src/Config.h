@@ -1,4 +1,5 @@
 #pragma once
+#include "Constants.h"
 
 class Config {
 
@@ -14,12 +15,15 @@ class Config {
         void            setFormat(int mode);
         bool            isTenthSecFormat(void);
 
+        uint8_t         getBrightness(void);
+        void            setBrightness(uint8_t);
+
         const String&   getFilename();
         void            saveFile(void);
         void            print(void) const;
 
         // when we are the access po
-        String          _apName;
+        String          _apSSID;
         String          _apPassword;
 
         // time string must be nn iso format (20 chars "2023-12-29T15:45:00")
@@ -32,12 +36,13 @@ class Config {
 
         // what mode we are in (COUNTDOWN, COUNTUP, ..
         int             _mode;
+        uint8_t         _brightness;
         
         // each mode has a set of formats
         int             _formats[N_MODES];
 
         // all segments have the same brightness
-        uint8_t         _brightness;
+  //      uint8_t         _brightness;
 };
 
 extern Config*  initConfig(void);

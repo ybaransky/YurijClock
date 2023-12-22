@@ -11,7 +11,13 @@ const static String configFilename("/coundown.json");
 #define DEFAULT_MESSAGE_START "YuriCloc"
 #define DEFAULT_MESSAGE_FINAL "Good Luc"
 
-#define DEFAULT_BRIGHTNESS 7   //  1 ... 7
+#define DEFAULT_AP_SSID       "YurijCloc"
+#define DEFAULT_AP_PASSWORD   "12345678"
+
+#define DEFAULT_MODE          MODE_COUNTDOWN
+#define DEFAULT_BRIGHTNESS    7   //  1 ... 7
+
+
 
 static const char*  NAME="Config::";
 
@@ -28,7 +34,12 @@ void    Config::init(void) {
     _msgStart = DEFAULT_MESSAGE_START;
     _msgFinal = DEFAULT_MESSAGE_FINAL;
 
-    _mode   = MODE_COUNTDOWN;
+    _apSSID     = DEFAULT_AP_SSID;
+    _apPassword = DEFAULT_AP_PASSWORD;
+
+    _mode       = DEFAULT_MODE;
+    _brightness = DEFAULT_BRIGHTNESS;
+
     memset(_formats,0,sizeof(_formats));
 
     _brightness = DEFAULT_BRIGHTNESS;
@@ -73,6 +84,9 @@ bool  Config::isTenthSecFormat(void) {
   }
   return rc;
 }
+
+uint8_t Config::getBrightness(void) { return _brightness;}
+void    Config::setBrightness(uint8_t brightness) { _brightness = brightness; }
 
 void  Config::print(void) const {
   P("config:"); 

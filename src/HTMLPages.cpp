@@ -6,36 +6,41 @@
 #include "Config.h"
 #include "Display.h"
 #include "RTClock.h"
+#include "WebServer.h"
+
+#define PWEB
+bool  EVENT_DEMO_MODE = false;
 
 extern Display* display;
 extern RTClock* rtClock;
 extern Config*  config;
 
-#ifdef YURIJ
-extern  std::unique_ptr<ESP8266WebServer> server; 
+//extern  std::unique_ptr<ESP8266WebServer> server; 
+extern  WebServer*        server;
 static  const String     NL("\r\n");
 static  const String     EMPTY("");
 
-static  const char STYLE_BUTTON[] PROGMEM = \
-"button {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}" ;
+static  const char STYLE_BUTTON[] PROGMEM = R"(
+button {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;} )";
 
-static  const char  STYLE_HEAD[] PROGMEM = \
-"<head>\r\n" \
-"<meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>\r\n" \
-"<title>Countdown Setup</title>\r\n" \
-"<style type='text/css'>\r\n" \
-"table       {text-align:center; border-collapse:collapse; width=90%; margin=0px auto;}\r\n" \
-"th,td       {padding-left: 5px; padding-right: 5px; border:1px solid blue}\r\n" \
-"td.noborder {border: 0px;}\r\n" \
-"td.bold     {font-weight:bold;}\r\n" \
-"td.left     {text-align:left;}\r\n" \
-"td.center   {text-align:center;}\r\n" \
-"td.right    {text-align:right;}\r\n" \
-"td.grey     {background-color:#f2f2f2;}\r\n" \
-"caption     {font-weight:bold;}\r\n" \
-"button {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}\r\n" \
-"input[type='text'], input[type='number'] {font-size:100%; border:2px solid red}\r\n" \
-"</style></head>\r\n";
+static  const char  STYLE_HEAD[] PROGMEM = R"(
+<head>\r\n
+<meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>/
+<title>Countdown Setup</title>
+<style type='text/css'>
+table       {text-align:center; border-collapse:collapse; width=90%; margin=0px auto;}
+th,td       {padding-left: 5px; padding-right: 5px; border:1px solid blue}
+td.noborder {border: 0px;}
+td.bold     {font-weight:bold;}
+td.left     {text-align:left;}
+td.center   {text-align:center;}
+td.right    {text-align:right;}
+td.grey     {background-color:#f2f2f2;}
+caption     {font-weight:bold;}
+button {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}
+input[type='text'], input[type='number'] {font-size:100%; border:2px solid red}
+</style></head>
+)";
 
 //"th,td   {width:33%; padding-left: 5px; padding-right: 5px; border:1px solid blue}\r\n" 
 //
@@ -193,6 +198,7 @@ String configPageInputRadio(
   return input;
 }
 
+// YURIJ
 void handleConfigClock(void) {
   String TABLE = "<table width='95%' align='center'>" + NL;
   String page = "";
@@ -294,26 +300,12 @@ void handleConfigClock(void) {
   page += "<br><br><br>";
   page += "<p><p>";
 
-  /*
-   * hardware table
-   */
-  page += TABLE;
-  page += "<caption>Hardware Settings</caption>" + NL;
-  page += "<col width='55%'><col width='15%'><col width='15%'><col width='15%'>" + NL;
-  page += "<tr><th>Description</th><th>Addr</th><th>Bright</th><th>Show</th></tr>" + NL;
-  for(int i=0;i<N_SEGMENTS; i++) {
-    char sv[32], brt[32],addr[32],desc[32];
-    sprintf(brt,  "brt%d",i);
-    field1 = configPageInputNumber(brt , config->_brightness, 2, 0, 15); 
-    page  += configPageInputRow3Cols(desc , field0, field1, field2);
-  }
-  page  += "</table><br>" + NL;
-  /*
+ /*
    * access point table
    */
   page += TABLE;
   page += "<caption>Access Point Wifi Settings</caption>" + NL;
-  field = configPageInputText("apn", config->_apName.c_str(), 16); 
+  field = configPageInputText("apn", config->_apSSID.c_str(), 16); 
   page += configPageInputRow("AP Name", field);
   field = configPageInputText("app", config->_apPassword.c_str(), 16); 
   page += configPageInputRow("AP Password", field);
@@ -326,8 +318,6 @@ void handleConfigClock(void) {
   page += "<p>";
   page += "<a href='/delete' align=center><b>Delete Config File</b></a>" + NL;
   page += "<p>";
-  page += "<a href='/wifi' align=center><b>Network Settings</b></a>" + NL;
-  page += "<br>";
 
   /*
    * end form
@@ -339,22 +329,25 @@ void handleConfigClock(void) {
   //
   page +=   "</div>";
   page += "</body></html>";
-  server->send(200, "text/html", page.c_str());
+//  server->send(200, "text/html", page.c_str());
+  extern ESP8266WebServer *wserver;
+  wserver->send(200, "text/html", page.c_str());
 }
 
 void  handleConfigView(void) {
+  extern ESP8266WebServer *wserver;
   String filename(config->getFilename());
   if (SPIFFS.exists(filename)) {
     String  context = "text/json";
     File file = SPIFFS.open(filename, "r");
-    size_t sent = server->streamFile(file, "text/json");
+    size_t sent = wserver->streamFile(file, "text/json");
     file.close();
   } else {
     String page("<!DOCTYPE htm>\n");
     page += "<html lang='en'><body>\n";
     page += "<h2>File '" + filename + "' Not Found</h2>";
     page += "</body></html>\n";
-    server->send(200, "text/html", page);
+    wserver->send(200, "text/html", page);
   }
   return;
 }
@@ -438,8 +431,8 @@ void handleConfigSave(void) {
       
   bool      changed = false;
   bool      changedTime = false;
-  bool      periodic_save = false;
   bool      changedBrightness = false;
+
   DateTime dt = rtClock->now();
   uint8_t day = dt.day();
   uint8_t hour = dt.hour();
@@ -483,7 +476,7 @@ void handleConfigSave(void) {
       }
 
       else if (server->argName(i) == "brt") {
-        config->_brightness = server->arg(i).toInt();
+        config->setBrightness(server->arg(i).toInt());
         changedBrightness = true;
       }
 
@@ -491,36 +484,71 @@ void handleConfigSave(void) {
         config->setMode(server->arg(i).toInt());
       }
 
-      else if (server->argName(i) == "pschk") {
-        if (server->arg(i).equals("true"))
-          periodic_save = true;
-      }
-       
       // wifi ap settings
       else if (server->argName(i) == "apn") {
-        config->_apName = server->arg(i);
+        config->_apSSID = server->arg(i);
       }
 
       else if (server->argName(i) == "app")  {
         config->_apPassword = server->arg(i);
-    } 
-  }
+      } 
+    }
 
-  if (changedBrightness) {
-    display->setBrightness();
-    Serial.println("forcing new brightness");
-  }
+    if (changedBrightness) {
+      display->refresh();
+      Serial.println("forcing new brightness");
+    }
 
-  if (changed) {
-    config->saveFile();
-  }
+    if (changed) {
+      config->saveFile();
+    }
   
-  if (server->arg("btn").equals("test")) {
-    extern bool gTestMode;
-    gTestMode = true;
-    Serial.printf("handleConfiSave| trying test mode\n");
+    if (server->arg("btn").equals("test")) {
+      extern bool EVENT_DEMO_MODE;
+      EVENT_DEMO_MODE = true;
+      Serial.printf("handleConfiSave| trying test mode\n");
+    }
   }
 }
-#endif
 
- 
+String getDateTimePage(void ) {
+char  page[] = R"(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial scale=1.0">
+<title>Document</title>
+<h1> Time is <span id="time"> </span></h1>
+<!--
+    <script src="index.js">   </script>
+-->
+</head>
+<body>
+</body>
+<script>
+var datetime = new Date();
+console.log(datetime);
+document.getElementById("time").textContent = datetime; 
+</script>
+</html>
+
+)";
+  return page;
+}
+
+void handleRoot() {
+  PL("handleRoot")
+  String  now = rtClock->now().timestamp();
+  #ifdef PWEB
+    extern ESP8266WebServer *wserver;
+    //wserver->send(200, "text/html", "Hello World! <p>" + now);
+    wserver->send(200, "text/html", getDateTimePage());
+  #else
+    extern ESP8266WebServer wserver;
+    wserver.send(200, "text/html", "Hello World!");
+  #endif
+  PL("responded")
+}
+

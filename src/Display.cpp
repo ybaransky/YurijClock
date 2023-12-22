@@ -79,6 +79,9 @@ void Display::showInteger(int32_t ival) {
       _segments[i].device().showNumberDec(parts[i],false);
 }
 
+void  Display::refresh(void) {
+  PL("display::refresh called;")
+}
 /*
 ******************************************************************************************
 ****************** Public ****************************************************************

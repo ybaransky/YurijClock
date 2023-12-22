@@ -11,7 +11,8 @@ class Display {
     void    test(void);
 
     void    showInteger(int32_t);
-    void    setBrightness();
+//    void    setBrightness();
+    void    refresh(void);
 
     void    showCount(const TimeSpan&, uint8_t tenth=0);
     void    showClock(const DateTime&, uint8_t tenth=0);
