@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ESP8266Wifi.h>
 #include <ESP8266WebServer.h>
 #include <FS.h>
 
@@ -6,17 +7,14 @@
 #include "Config.h"
 #include "Display.h"
 #include "RTClock.h"
-#include "WebServer.h"
 
-#define PWEB
 bool  EVENT_DEMO_MODE = false;
 
-extern Display* display;
-extern RTClock* rtClock;
-extern Config*  config;
+extern Display    *display;
+extern RTClock    *rtClock;
+extern Config     *config;
+extern WebServer  *server;
 
-//extern  std::unique_ptr<ESP8266WebServer> server; 
-extern  WebServer*        server;
 static  const String     NL("\r\n");
 static  const String     EMPTY("");
 
@@ -24,22 +22,23 @@ static  const char STYLE_BUTTON[] PROGMEM = R"(
 button {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;} )";
 
 static  const char  STYLE_HEAD[] PROGMEM = R"(
-<head>\r\n
-<meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>/
-<title>Countdown Setup</title>
-<style type='text/css'>
-table       {text-align:center; border-collapse:collapse; width=90%; margin=0px auto;}
-th,td       {padding-left: 5px; padding-right: 5px; border:1px solid blue}
-td.noborder {border: 0px;}
-td.bold     {font-weight:bold;}
-td.left     {text-align:left;}
-td.center   {text-align:center;}
-td.right    {text-align:right;}
-td.grey     {background-color:#f2f2f2;}
-caption     {font-weight:bold;}
-button {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}
-input[type='text'], input[type='number'] {font-size:100%; border:2px solid red}
-</style></head>
+<head>
+  <meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>
+  <title>Countdown Setup</title>
+  <style type='text/css'>
+    table       {text-align:center; border-collapse:collapse; width=90%; margin=0px auto;}
+    th,td       {padding-left: 5px; padding-right: 5px; border:1px solid blue}
+    td.noborder {border: 0px;}
+    td.bold     {font-weight:bold;}
+    td.left     {text-align:left;}
+    td.center   {text-align:center;}
+    td.right    {text-align:right;}
+    td.grey     {background-color:#f2f2f2;}
+    caption     {font-weight:bold;}
+    button      {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}
+    input[type='text'], input[type='number'] {font-size:100%; border:2px solid red}
+  </style>
+</head>
 )";
 
 //"th,td   {width:33%; padding-left: 5px; padding-right: 5px; border:1px solid blue}\r\n" 
@@ -198,37 +197,116 @@ String configPageInputRadio(
   return input;
 }
 
-// YURIJ
+
+
+
+
+
 void handleConfigClock(void) {
+  DateTime dt = rtClock->now();
+  String now = dt.timestamp();
+  now.remove(now.length()-3); // get rid of the seconds
+
+/*
+  <head>
+    <title>My Web Page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+*/
   String TABLE = "<table width='95%' align='center'>" + NL;
-  String page = "";
-  page += "<!doctype html>"    + NL;;
-  page +=   "<html lang='en'>" + NL;;
+  String page = R"(
+<!DOCTYPE html>
+<html><head>
+  <meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>
+  <title>Countdown Setup</title>
+  <style type='text/css'>
+    table       {text-align:center; border-collapse:collapse; width=90%; margin=0px auto;}
+    th,td       {padding-left: 5px; padding-right: 5px; border:1px solid blue}
+    td.noborder {border: 0px;}
+    td.bold     {font-weight:bold;}
+    td.left     {text-align:left;}
+    td.center   {text-align:center;}
+    td.right    {text-align:right;}
+    td.grey     {background-color:#f2f2f2;}
+    caption     {font-weight:bold;}
+    button      {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}
+    input[type='text'], input[type='number'] {font-size:100%; border:2px solid red}
+  </style>
+</head>
+  <body>
+    <p>Temperature is 32.26 ºC</p>
+    <p>Temperature is 32.26 &deg;C</p>
+    <p>Temperature is 32.26 &#x000b0;C</p>
+    <p>Temperature is 32.26 &#176;C</p> 
+    
+    <form action="/get" method ="GET">
+      <p>
+      <label for="input1">Input 1:</label>
+      <input type="text" id="input1" name="input1">
+      <label for="countdown-time">Countdown to: </label>
+      <input type="datetime-local" id="countdown-time" name="countdown-time" value=)";
+page += "\"" + now + "\" ";
+page += R"(min="2000-06-07T00:00" max="2035-06-14T00:00"/><br>)";
+page += R"(<button type='submit' name='btn' value='save' >Save</button>)
+      </p>
+    </form>
+  </body> 
+</html>)";
+
+// page += R"(<input type="submit" value="Submit">
+  PL("about to send from cnfig page");
+  PL(page);
+  PL(page.length());
+  //server->send(200, "text/html", "Hello World");
+  server->send(200, "text/html", page);
+  return;
+
+
+#ifdef YURIJ
+  String page = R"(
+<!doctype html>
+  <html lang='en'>)";
   page += FPSTR(STYLE_HEAD);
-  page +=     "<body>"  + NL;  
-  page +=     "<div style='text-align:center; min-width:260px;'>";
-  
-  // 
-  // title of the pag
-  //
-  page += "<h3 style='text-align:center; font-weight:bold'>Counting to<br>Something Important<br><hr></h3>" + NL;
-  
+  page += R"(<body>
+  <div style='text-align:center; min-width:260px'
+  <h3 style='text-align:center; font-weight:bold'>Countdown Clock<br>)";
+  page += now;
+  page += R"(<hr></h3>)";
+ 
   /*
    * start form
    */
-  page += "<form method='get' action='save'>" + NL;
+  //<form method='get' action='save'>)";
+  page += R"(
+  <form method='get' action='save'>)";
     
-  String field, field0, field1, field2, empty("");
-
-  DateTime dt = rtClock->now();
-  uint8_t day = dt.day();
-  uint8_t hour = dt.hour();
-  uint8_t minute = dt.minute();
-  uint8_t second = dt.second();
-
   /*
    * clock table
    */
+  page += R"(
+    <label for="meeting-time">Countdown to: </label>
+    <input type="datetime-local" id="meeting-time" name="meeting-time" value=)";
+  page += "\"" + now + "\" ";
+  page += R"(min="2000-06-07T00:00" max="2035-06-14T00:00"/><br>)";
+  page += R"(
+    <button type='submit' name='btn' value='save' >Save</button>)";
+//    <input type='submit' name='btn' value='save' >Save</button>)";
+
+  /*
+   * end form
+   */
+  page += R"(
+  </form>)";
+ 
+  /*
+   * the end
+   */
+  page += R"(
+  </div>
+</body>
+</html>)";
+#endif
+#ifdef YURIJ
   page += TABLE;
   page += "<caption>Clock Setup</caption>" + NL;
   page += "<col width='50%'><col width='50%'>" + NL;
@@ -291,6 +369,7 @@ void handleConfigClock(void) {
   page += configPageInputRow("End (0-12)", field);
   page += "</table><br>" + NL;
 
+
   /*
    * buttons
    */
@@ -311,6 +390,7 @@ void handleConfigClock(void) {
   page += configPageInputRow("AP Password", field);
   page += "</table><br>" + NL;
 
+#endif
   /*
    * external links
    */
@@ -318,36 +398,27 @@ void handleConfigClock(void) {
   page += "<p>";
   page += "<a href='/delete' align=center><b>Delete Config File</b></a>" + NL;
   page += "<p>";
-
   /*
    * end form
    */
   page += "</form>" + NL;
   
-  //
-  // the end
-  //
-  page +=   "</div>";
-  page += "</body></html>";
-//  server->send(200, "text/html", page.c_str());
-  extern ESP8266WebServer *wserver;
-  wserver->send(200, "text/html", page.c_str());
+  // server->send(200, "text/html", page.c_str());
 }
 
 void  handleConfigView(void) {
-  extern ESP8266WebServer *wserver;
   String filename(config->getFilename());
   if (SPIFFS.exists(filename)) {
     String  context = "text/json";
     File file = SPIFFS.open(filename, "r");
-    size_t sent = wserver->streamFile(file, "text/json");
+    size_t sent = server->streamFile(file, "text/json");
     file.close();
   } else {
     String page("<!DOCTYPE htm>\n");
     page += "<html lang='en'><body>\n";
     page += "<h2>File '" + filename + "' Not Found</h2>";
     page += "</body></html>\n";
-    wserver->send(200, "text/html", page);
+    server->send(200, "text/html", page);
   }
   return;
 }
@@ -426,9 +497,12 @@ void handleConfigSave(void) {
   page += "  <button>Reboot</button>";
   page +=  "</form>\n";
   page +=  "</div></body></html>";
-//  Serial.println(page);
+  Serial.println(page);
   server->send(200, "text/html", page);
       
+      return;
+
+
   bool      changed = false;
   bool      changedTime = false;
   bool      changedBrightness = false;
@@ -440,6 +514,7 @@ void handleConfigSave(void) {
   uint8_t second = dt.second();
 
   for(int i=0; i<server->args();i++) {
+    PV(server->argName(i)); SPACE; PVL(server->arg(i));
     if (server->arg(i).length()) {
       changed = true;
 
@@ -538,17 +613,17 @@ document.getElementById("time").textContent = datetime;
   return page;
 }
 
-void handleRoot() {
-  PL("handleRoot")
-  String  now = rtClock->now().timestamp();
-  #ifdef PWEB
-    extern ESP8266WebServer *wserver;
-    //wserver->send(200, "text/html", "Hello World! <p>" + now);
-    wserver->send(200, "text/html", getDateTimePage());
-  #else
-    extern ESP8266WebServer wserver;
-    wserver.send(200, "text/html", "Hello World!");
-  #endif
+void handleConfigGet() {
+  PL("handleConfigGet")
+  String page="<h1>";
+  page += rtClock->now().timestamp() + "<br>" + NL;
+  
+  for(int i=0; i<server->args();i++) 
+    page += server->argName(i) + "=|" + server->arg(i) + "| <br>" + NL;
+
+  page += "</h1>";
+  P(page);
+  server->send(200, "text/html", page);
+  
   PL("responded")
 }
-

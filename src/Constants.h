@@ -1,4 +1,8 @@
 #pragma once
+#include <ESP8266Wifi.h>
+#include <ESP8266WebServer.h>
+
+typedef ESP8266WebServer WebServer;
 
 enum  {
   SSUU=0,HHMM, DDDD, N_SEGMENTS,

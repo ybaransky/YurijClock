@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <ESP8266Wifi.h>
+#include <ESP8266WebServer.h>
 #include <TaskScheduler.h>
 #include "Action.h"
 #include "Button.h"
@@ -8,7 +10,6 @@
 #include "Timer.h"
 #include "Display.h"
 #include "Config.h"
-#include "WebServer.h"
 
 /*
 **********************************************************************
@@ -27,7 +28,6 @@ String          message;
 Action          action;
 WebServer       *server;
 
-
 struct TickType {
   bool  sec;
   bool  ms100;
@@ -35,36 +35,33 @@ struct TickType {
   TickType(void) : sec(false),ms100(false),ms500(false) {}
 };
 
-void  setUserHandlers() {
+WebServer* initWebServer(void) {
+  extern  void  handleConfigGet(void);
   extern  void  handleConfigClock(void);
   extern  void  handleConfigSave(void);
   extern  void  handleConfigView(void);
   extern  void  handleConfigDelete(void);
   extern  void  handleConfigReboot(void);
-  PL("adding handlers")
-//  server->on("/",       handleConfigClock);
-  PL("done handlers")
-/*
-  server->on("/clock",  handleConfigClock);
-  server->on("/save",   handleConfigSave);
-  server->on("/view",   handleConfigView);
-  server->on("/delete", handleConfigDelete);
-  server->on("/reboot", handleConfigReboot);
-*/
-}
 
-WebServer* initWebServer(void) {
   WebServer* server = new ESP8266WebServer(80); 
   
-  P("access point: ssid="); P(config->_apSSID); P(" password="); PL(config->_apPassword);
+  P("access point: ssid="); P(config->_apSSID); P(" password=|"); P(config->_apPassword);PL("|");
   if (WiFi.softAP(config->_apSSID, config->_apPassword)) {
     P("Access point created with ip: "); PL(WiFi.softAPIP());
   } else {
     PL("Access point failed!");
   }
-  setUserHandlers();
+ 
+  server->on("/",       handleConfigClock);
+  server->on("/get",    handleConfigGet);
+  server->on("/clock",  handleConfigClock);
+  server->on("/save",   handleConfigSave);
+  server->on("/view",   handleConfigView);
+  server->on("/delete", handleConfigDelete);
+  server->on("/reboot", handleConfigReboot);
   server->begin();
   PL("Webserver started")
+
   return server;
 }
 
@@ -92,12 +89,6 @@ Scheduler* initScheduler(void) {
 **********************************************************************
 */
 
-#define PWEB
-#ifdef PWEB
-ESP8266WebServer *wserver;
-#else
-ESP8266WebServer wserver(80);
-#endif
 void setup() {
   // Initialize serial port
   Serial.begin(9600);
@@ -127,7 +118,6 @@ void setup() {
   Serial.flush();
   delay(1000);
 
-//  server    = initWebServer();
 
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
@@ -141,26 +131,7 @@ void setup() {
   action.splash(message,config->getMode(),1000); 
   config->setMode(MODE_TEXT);
 
-  const char* ssid = "YuriCloc";
-  const char* password = "12345678";
-
-extern void handleRoot(void);
-extern void handleConfigClock(void);
-extern void handleConfigView(void);
-
-    #ifdef PWEB
-    wserver = new ESP8266WebServer(80);
-    WiFi.softAP(ssid, password);
- //   wserver->on("/", handleRoot);
-    wserver->on("/",     handleConfigClock);
-    wserver->on("/view", handleConfigView);
-    wserver->begin();
-    #else
-    WiFi.softAP(ssid, password);
-    wserver.on("/", handleRoot);
-    wserver.begin();
-    #endif
-    PL("wserver started");
+  server = initWebServer();
 }
 
 /*
@@ -176,13 +147,7 @@ void loop() {
   static TimeSpan ts;
   static DateTime dt;
 
- // server->handleClient();
- #ifdef PWEB
- wserver->handleClient();
- #else
- wserver.handleClient();
- #endif
-
+  server->handleClient();
   button->tick();
   scheduler->execute();
 
@@ -199,7 +164,7 @@ void loop() {
       config->print();
     }
     */
-    if (dt.second()%2==0) {
+    if (dt.second()%5==0) {
       P(dt.timestamp()); P(WiFi.softAPIP()); PL(modeNames[config->getMode()]);
     }
   }
@@ -305,6 +270,7 @@ void  reboot(void) {
   ESP.restart();
   //digitalWrite(D0, LOW);
 }
+
 #ifdef YURIJ
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>

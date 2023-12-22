@@ -11,7 +11,7 @@ const static String configFilename("/coundown.json");
 #define DEFAULT_MESSAGE_START "YuriCloc"
 #define DEFAULT_MESSAGE_FINAL "Good Luc"
 
-#define DEFAULT_AP_SSID       "YurijCloc"
+#define DEFAULT_AP_SSID       "YurijClock"
 #define DEFAULT_AP_PASSWORD   "12345678"
 
 #define DEFAULT_MODE          MODE_COUNTDOWN
