@@ -19,9 +19,9 @@ void  Action::start(Type type, const String& msg, int prevMode, ulong duration, 
 };
 
 void  Action::print(const char* msg) {
-  if (msg) {P(msg); SPACE;}
-  PV(_type); SPACE; PV(_msg); SPACE; PV(_duration); SPACE; PV(_prevMode); SPACE;
-  PV(_active); SPACE; PV(_blinking);  
+  if (msg) {P(msg); SP;}
+  PV(_type); SP; PV(_msg); SP; PV(_duration); SP; PV(_prevMode); SP;
+  PV(_active); SP; PV(_blinking);  
   PL("");
 }
 

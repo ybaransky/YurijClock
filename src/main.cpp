@@ -38,10 +38,11 @@ struct TickType {
 WebServer* initWebServer(void) {
   extern  void  handleConfigGet(void);
   extern  void  handleConfigClock(void);
+  extern  void  handleSyncTime(void);
   extern  void  handleConfigSave(void);
   extern  void  handleConfigView(void);
   extern  void  handleConfigDelete(void);
-  extern  void  handleConfigReboot(void);
+  extern  void  handleReboot(void);
 
   WebServer* server = new ESP8266WebServer(80); 
   
@@ -54,11 +55,12 @@ WebServer* initWebServer(void) {
  
   server->on("/",       handleConfigClock);
   server->on("/get",    handleConfigGet);
-  server->on("/clock",  handleConfigClock);
+  server->on("/config", handleConfigClock);
+  server->on("/sync",   handleSyncTime);
   server->on("/save",   handleConfigSave);
   server->on("/view",   handleConfigView);
   server->on("/delete", handleConfigDelete);
-  server->on("/reboot", handleConfigReboot);
+  server->on("/reboot", handleReboot);
   server->begin();
   PL("Webserver started")
 

@@ -84,7 +84,6 @@ const char* formatNamesClock[N_FORMAT_CLOCK] = {
 
 const char* formatNamesText[N_FORMAT_CLOCK] = {
   " Left justified",
-  "Right justified"
 };
 
 const char** formatNames[N_MODES] = {formatNamesCountDown, formatNamesCountUp, formatNamesClock, formatNamesText};

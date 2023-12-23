@@ -3,10 +3,10 @@
 #include "Config.h"
 #include "Debug.h"
 
-const static String configFilename("/coundown.json");
+const static String configFilename("/countdown.json");
 
 #define DEFAULT_TIME_START    "2023-12-12T15:45:00"
-#define DEFAULT_TIME_FINAL    "2023-12-22T15:45:00"
+#define DEFAULT_TIME_FINAL    "2024-07-28T15:45:00"
 
 #define DEFAULT_MESSAGE_START "YuriCloc"
 #define DEFAULT_MESSAGE_FINAL "Good Luc"
@@ -43,6 +43,8 @@ void    Config::init(void) {
     memset(_formats,0,sizeof(_formats));
 
     _brightness = DEFAULT_BRIGHTNESS;
+
+    FILESYSTEM.begin();
 }
 
 const String& Config::getFilename(void) { return configFilename;}
@@ -61,10 +63,10 @@ int   Config::getNextFormat(void) {
   int format = _formats[_mode];
   format++;
   switch(_mode) {
-    case MODE_COUNTDOWN : return format % 7; break;
-    case MODE_COUNTUP   : return format % 7; break;
-    case MODE_CLOCK     : return format % 11; break;
-    case MODE_TEXT      : return format % 2; break;
+    case MODE_COUNTDOWN : return format % N_FORMAT_COUNTDOWN; break;
+    case MODE_COUNTUP   : return format % N_FORMAT_COUNTUP; break;
+    case MODE_CLOCK     : return format % N_FORMAT_CLOCK; break;
+    case MODE_TEXT      : return format % N_FORMAT_TEXT; break;
     default: return 0;
   }
 }
