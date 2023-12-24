@@ -2,6 +2,7 @@
 #include <RTClib.h>
 #include "Constants.h"
 #include "Segment.h"
+#include "Debug.h"
 
 /* *************************************************************************
 *  Segment::Data clas
@@ -223,7 +224,7 @@ void  Segment::write(uint8_t data[], bool colon, uint8_t brightness, bool visibl
 
   if (false && _iam==0) {
     bool rc = _data == _cache;
-    PV(_iam);SP;_data.print("data"); P(" "); _cache.print("cache"); P("  equal="); PL(rc);
+    PV(_iam);SPACE;_data.print("data"); P(" "); _cache.print("cache"); P("  equal="); PL(rc);
   }
 
   if (_data == _cache) return;

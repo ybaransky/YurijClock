@@ -8,8 +8,6 @@
 #include "Display.h"
 #include "RTClock.h"
 
-bool  EVENT_DEMO_MODE = false;
-
 extern Display    *display;
 extern RTClock    *rtClock;
 extern Config     *config;
@@ -17,9 +15,22 @@ extern WebServer  *server;
 
 static  const String     NL("\r\n");
 static  const String     EMPTY("");
-static  const String     SPACE(" ");
+static  const String     BLANK(" ");
 static  const String     QUOTE("'");
 static  const String     TABLE = "<table width='95%' align='center'>";
+
+static  const String     idMsgStart("msgStart");
+static  const String     idMsgEnd("msgEnd");
+static  const String     idMode("mode");
+static  const String     idCDFormat("cdFormat");
+static  const String     idCUFormat("cuFormat");
+static  const String     idCLFormat("clFormat");
+static  const String     idTimeEnd("timeEnd");
+static  const String     idTimeStart("timeStart");
+static  const String     idSSID("ssid");
+static  const String     idPassword("password");
+static  const String     idSyncTime("syncTime");
+
 
 static  const char STYLE_BUTTON[] PROGMEM = R"(
 button {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;} )";
@@ -45,42 +56,43 @@ static  const char  STYLE_HEAD[] PROGMEM = R"(
 )";
 
 static const String quote(const String& text) { return QUOTE + text + QUOTE; }
-static const String quote(const char*   text) { return QUOTE + String(text) + QUOTE; }
 static const String quote(const int        i) { return QUOTE + String(i) + QUOTE; }
 
-static String inputFieldText(const char* id, const String& text, int size=0) 
+static void pageInfo(const char* msg, const String& page)  {
+  P(msg); SPACE; P(page.length()); PL(" bytes sent");
+}
+
+static String inputFieldText(const String& id, const String& text, int size=0) 
 {
   String input = NL;
-  String sid(id);
   String ssize(size);
   input += "<input ";
   input += "type='text' ";
-  input += "id="          + quote(sid)  + SPACE;
-  input += "name="        + quote(sid)  + SPACE;
-  input += "placeholder=" + quote(text) + SPACE;
+  input += "id="          + quote(id)  + BLANK;
+  input += "name="        + quote(id)  + BLANK;
+  input += "placeholder=" + quote(text) + BLANK;
   if (size) {
-    input += "maxlength="    + ssize + SPACE;
-    input += "size="         + ssize + SPACE;
+    input += "maxlength="    + ssize + BLANK;
+    input += "size="         + ssize + BLANK;
   }
   input += ">";
   return input;
 }
 
-static String inputFieldDateTime(const char* id, const String& text)
+static String inputFieldDateTime(const String& id, const String& text)
 {
   String input = NL;
-  String sid(id);
   input += "<input ";
   input += "type='datetime-local' ";
-  input += "id="    + quote(sid)  + SPACE;
-  input += "name="  + quote(sid)  + SPACE;
-  input += "value=" + quote(text) + SPACE;
+  input += "id="    + quote(id)  + BLANK;
+  input += "name="  + quote(id)  + BLANK;
+  input += "value=" + quote(text) + BLANK;
   input += "min='2000-06-07T00:00' max='2035-06-14T00:00'";
   input += ">";
   return input;
 }
 
-static String inputFieldComboBox(const char* id, const char* choices[], int ichoice, int n) {
+static String inputFieldComboBox(const String& id, const char* choices[], int ichoice, int n) {
   String input = NL;
   if (ichoice <  0) ichoice = 0;
   if (ichoice >= n) ichoice = 0;
@@ -88,15 +100,13 @@ static String inputFieldComboBox(const char* id, const char* choices[], int icho
   input += "<select name=" + quote(id) + ">" + NL;
   for(int i=0;i<n;i++) {
     input += "<option value=" + quote(i); 
-    if (i==ichoice) input += " selected";
+    if (i==ichoice) input += " selected='selected'";
     input += ">" + String(choices[i]) + "</option>" + NL;
   }
-//  input += "</div>";
   return input;
 }
 
-static String inputFieldRadio(
-  const char* id, const char* choices[], const int* values, int choice, int n) {
+static String inputFieldRadio(const String& id, const char* choices[], const int* values, int choice, int n) {
   String input = "";
   for(int i=0;i<n;i++) {
     input += "<input type='radio' name=" + quote(id) + " value=" + quote(values[i]);
@@ -106,7 +116,6 @@ static String inputFieldRadio(
   }
   return input;
 }
-
 
 static String addInputRow(const char* desc, const String& value) {
   String row("");
@@ -119,7 +128,7 @@ static String addInputRow(const char* desc, const String& value) {
   return row;
 }
 
-void handleConfigClock(void) {
+void handleConfigSetup(void) {
   DateTime dt = rtClock->now();
   String now = dt.timestamp();
   now.remove(now.length()-3); // get rid of the seconds
@@ -132,8 +141,10 @@ void handleConfigClock(void) {
   page += R"(
 <body>
   <div style='text-align:center; min-width:260px'>
-  <h3 style='text-align:center; font-weight:bold'>Countdown Clock</h3><hr><br>
-  <form action="/get" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
+  <h3 style='text-align:center; font-weight:bold'>)";
+  page += config->getSSID();
+  page += R"( Setup</h3><hr><br>
+  <form action="/save" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
   )";
 
 /*
@@ -146,9 +157,9 @@ void handleConfigClock(void) {
   <col width='50%'><col width='50%'>
   )";
   //<tr><th>Message</th><th>Text</th></tr>
-  field = inputFieldText("msgStart", config->_msgStart, 13);
+  field = inputFieldText(idMsgStart, config->getMsgStart(), 13);
   page += addInputRow("Start (0-12)", field);
-  field = inputFieldText("msgEnd", config->_msgFinal, 13);
+  field = inputFieldText(idMsgEnd, config->getMsgEnd(), 13);
   page += addInputRow("Final (0-12)", field);
   page += R"(</table><br>
 
@@ -160,10 +171,10 @@ void handleConfigClock(void) {
 
   page += TABLE;
   page += R"(
-  <caption>Clock Mode Choice</caption>
+  <caption>Clock Mode</caption>
   <tr><td>)";
   const int values[] = {MODE_COUNTDOWN, MODE_COUNTUP, MODE_CLOCK};
-  page += inputFieldRadio("mode", modeNames, values, config->getMode(), 3); 
+  page += inputFieldRadio(idMode, modeNames, values, config->getMode(), 3); 
   page += R"(</td></tr>
   </table><br>
 
@@ -179,12 +190,10 @@ void handleConfigClock(void) {
   <col width='50%'><col width='50%'>
   )";
   //<tr><th>Setting</th><th>Value</th></tr>
-  field = inputFieldComboBox("countdownFormat",
+  field = inputFieldComboBox(idCDFormat,
     formatNamesCountDown,config->getFormat(MODE_COUNTDOWN),N_FORMAT_COUNTDOWN);
   page += addInputRow("Format", field);
-  time = (rtClock->now() + TimeSpan(180*24*60*60)).timestamp();
-  time.remove(time.length()-3); // get rid of the seconds
-  field = inputFieldDateTime("endTime",time);
+  field = inputFieldDateTime(idTimeEnd,config->getTimeEnd());
   page += addInputRow("End time", field);
   page += R"(</table><br>
 
@@ -200,12 +209,10 @@ void handleConfigClock(void) {
   <col width='50%'><col width='50%'>
   )";
   //<tr><th>Setting</th><th>Value</th></tr>
-  field = inputFieldComboBox("countupFormat",
+  field = inputFieldComboBox(idCUFormat,
     formatNamesCountUp,config->getFormat(MODE_COUNTUP),N_FORMAT_COUNTUP);
   page += addInputRow("Format", field);
-  time = rtClock->now().timestamp();
-  time.remove(time.length()-3); // get rid of the seconds
-  field = inputFieldDateTime("startTime",time);
+  field = inputFieldDateTime(idTimeStart,config->getTimeStart());
   page += addInputRow("Start time", field);
   page += R"(</table><br>
 
@@ -221,10 +228,17 @@ void handleConfigClock(void) {
   <col width='50%'><col width='50%'>
   )";
   //<tr><th>Setting</th><th>Value</th></tr>
-  field = inputFieldComboBox("clockFormat",
+  field = inputFieldComboBox(idCLFormat,
     formatNamesClock,config->getFormat(MODE_CLOCK),N_FORMAT_CLOCK);
-  page += addInputRow("Format", field);
-  page += R"(</table><br>
+  page += addInputRow("Format", field);  
+  
+  
+  page += R"(<tr><td class='right border grey'>)";
+  page += config->_apSSID; 
+  page += R"( Time</td><td class='left border'>)"; 
+  page += rtClock->now().timestamp(); 
+  page += R"(</td></tr> 
+    </table><br>
 
  )";
 /*
@@ -248,9 +262,9 @@ page += R"(
   <col width='50%'><col width='50%'>
   )";
   //<tr><th>Message</th><th>Text</th></tr>
-  field = inputFieldText("ssid", config->_apSSID, 12);
+  field = inputFieldText(idSSID, config->_apSSID, 12);
   page += addInputRow("Hotspot Name", field);
-  field = inputFieldText("pswd", config->_apPassword, 10);
+  field = inputFieldText(idPassword, config->_apPassword, 10);
   page += addInputRow("Hotspot Password", field);
   page += R"(</table><br>
   )";
@@ -260,22 +274,16 @@ page += R"(
    */
 
 page += R"(
-  <a href='/sync' align=center><b>Sync Clock</b></a><p>
-  <a href='/view' align=center><b>View Config File</b></a><p>
+  <a href='/sync'   align=center><b>Sync Clock</b></a><p>
+  <a href='/view'   align=center><b>View Config File</b></a><p>
   <a href='/delete' align=center><b>Delete Config File</b></a>
+  <a href='/reboot' align=center><b>Reboot Clock</b></a>
  
   </form>
 </body> 
-<script>
-  var datetime = new Date();
-  var isoString = datetime.toISOString();
-  document.getElementById("input1").value = isoString.substr(0,isoString.length-5)
-</script>
 </html>)";
 
-  PL("about to send from cnfig page");
-//  PL(page);
-  PL(page.length());
+  pageInfo("handleConfigClock", page);
   server->send(200, "text/html", page);
   return;
 }
@@ -298,12 +306,13 @@ static String getFileMsg(const String& msg) {
 }
 
 void  handleConfigView(void) {
-  String filename(config->getFilename());
+  String filename(config->getFileName());
   PVL(filename);
   if (FILESYSTEM.exists(filename)) {
     String  context = "text/json";
     File file = FILESYSTEM.open(filename, "r");
     size_t sent = server->streamFile(file, "text/json");
+    P("filesize="); PL(sent);
     file.close();
   } else {
     String msg = "File " + quote(filename) + " not found";
@@ -311,8 +320,9 @@ void  handleConfigView(void) {
   }
   return;
 }
+
 void  handleConfigDelete(void) {
-  const String&  filename = config->getFilename();
+  const String&  filename = config->getFileName();
   String msg = "File " + quote(filename);
   if (FILESYSTEM.exists(filename)) {
     FILESYSTEM.remove(filename);
@@ -333,132 +343,13 @@ void  handleReboot(void) {
   page +=     "<div style='text-align:center; min-width:260px;'>";
   page += "<h2 style='text-align:center; font-weight:bold'>Rebooting in 2 second</h2>";
   page += "<p><p>";
-  page += "<form method='get' action='/'><button type='submit'>Home</button></form>";
+//  page += "<form method='get' action='/'><button type='submit'>Home</button></form>";
   page += "</div></body></html>";
   server->send(200, "text/html", page); 
   extern  void  reboot(void);
+  delay(2000);
   reboot();
   return;
-}
-
-
-
-void handleConfigSave(void) {
-  String page = "";
-  page += "<!doctype html>"    + NL;;
-  page +=   "<html lang='en'>" + NL;;
-  page +=     "<head>" + NL;
-  page +=       "<meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>" + NL;
-  page +=       "<title>Countdown Setup</title>" + NL;
-  page +=       "<style type='text/css'>" + NL;
-  page +=         STYLE_BUTTON + NL;
-  page +=       "</style>" + NL;
-  page +=     "</head>" + NL;
-  page +=     "<body>"  + NL;  
-  page +=     "<div style='text-align:left; min-width:260px;'>";
-
-  page += "<h4>" + NL;
-  for(int i=0; i<server->args();i++) 
-    page += server->argName(i) + "='" + server->arg(i) + "'<br>" + NL;
-  page += "</h4>" + NL;
-  page += "</div>";
-
-  //page += "<div style='text-align:center; min-width:260px;'><br>";
-  page += "<div style='text-align:center'><br>";
-//  page += "<form style='display:inline-block' action='/' method='get'>";
-  page += "<form action='/' method='get'>";
-  page += "  <button>Home</button>";
-  page += "<p>";
-  page += "</form>";
-//  page += "<form style='display:inline-block' action='/reboot' method='get'>";
-  page += "<form action='/reboot' method='get'>";
-  page += "  <button>Reboot</button>";
-  page +=  "</form>\n";
-  page +=  "</div></body></html>";
-  Serial.println(page);
-  server->send(200, "text/html", page);
-      
-      return;
-
-#ifdef YURIJ
-  bool      changed = false;
-  bool      changedTime = false;
-  bool      changedBrightness = false;
-
-  DateTime dt = rtClock->now();
-
-  for(int i=0; i<server->args();i++) {
-    PV(server->argName(i)); SPACE; PVL(server->arg(i));
-    if (server->arg(i).length()) {
-      changed = true;
-
-      if (server->argName(i) == "dd") {
-        changedTime = true;
-        day = server->arg(i).toInt();
-      }
-
-      else if (server->argName(i) == "hh") {
-        changedTime = true;
-        hour = server->arg(i).toInt();
-      }
-
-      else if (server->argName(i) == "mm") {
-        changedTime = true;
-        minute = server->arg(i).toInt();
-      }
-
-      else if (server->argName(i) == "ss") {
-        changedTime = true;
-        second = server->arg(i).toInt();
-      }
-
-      else if (server->argName(i) == "mode") {
-        config->setMode( server->arg(i).toInt() );
-      }
-
-      else if (server->argName(i) == "msg0") {
-        config->_msgStart = server->arg(i);
-      }
-
-      else if (server->argName(i) == "msg1") {
-        config->_msgFinal = server->arg(i);
-      }
-
-      else if (server->argName(i) == "brt") {
-        config->setBrightness(server->arg(i).toInt());
-        changedBrightness = true;
-      }
-
-      else if (server->argName(i) == "dir") {
-        config->setMode(server->arg(i).toInt());
-      }
-
-      // wifi ap settings
-      else if (server->argName(i) == "apn") {
-        config->_apSSID = server->arg(i);
-      }
-
-      else if (server->argName(i) == "app")  {
-        config->_apPassword = server->arg(i);
-      } 
-    }
-
-    if (changedBrightness) {
-      display->refresh();
-      Serial.println("forcing new brightness");
-    }
-
-    if (changed) {
-      config->saveFile();
-    }
-  
-    if (server->arg("btn").equals("test")) {
-      extern bool EVENT_DEMO_MODE;
-      EVENT_DEMO_MODE = true;
-      Serial.printf("handleConfiSave| trying test mode\n");
-    }
-  }
-#endif
 }
 
 String getDateTimePage(void ) {
@@ -488,9 +379,117 @@ document.getElementById("time").textContent = datetime;
   return page;
 }
 
+static bool changedFormat(int mode,const String& id, int value, int& changed) {
+  bool rc = config->getMode() != mode;
+  if (id == idCDFormat) {
+    P("mode="); P(mode); 
+    P(" format "); P(config->getFormat(mode)); P(" --> "); P(value);
+    PL("");
+  }
+  if (config->getFormat(mode) != value) {
+      config->setFormat(value, mode);
+      changed++;
+  }
+  return rc;
+}
 
+void handleConfigSave() {
+  int changed = 0;
+  bool guiUpdate = false;
+  bool reboot = false;
+  int value;
 
+  if (server->arg("btn").equals("test")) {
+    extern bool EVENT_DEMO_START;
+    EVENT_DEMO_START = true;
+    server->send(200, "text/html", "entered test mode");
+    return;
+  }
 
+  String page="<h1>";
+  for(int i=0; i<server->args();i++) {
+    page += server->argName(i) + "=|" + server->arg(i) + "| <br>" + NL;
+    P(i); P(") argName=|");P(server->argName(i)); P("| arg=|"); P(server->arg(i));PL("|");
+    if (server->arg(i).length()) {
+
+      if (server->argName(i) == idMode) {
+        value = server->arg(i).toInt();
+        if (config->getMode() != value) {
+          config->setMode(value);
+          guiUpdate = true;
+          changed++;
+        }
+      }
+      else if (server->argName(i) == idMsgStart) {
+        if (config->getMsgStart() != server->arg(i)) {
+          config->setMsgStart(server->arg(i));
+          changed++;
+        }
+      }
+      else if (server->argName(i) == idMsgEnd) {
+        if (config->getMsgEnd() != server->arg(i)) {
+          config->setMsgEnd(server->arg(i));
+          changed++;
+        }
+      }
+      else if (server->argName(i) == idCDFormat) {
+        if (changedFormat(MODE_COUNTDOWN,idCDFormat,server->arg(i).toInt(),changed)) {
+          guiUpdate = true;
+        }
+      }
+      else if (server->argName(i) == idCUFormat) {
+        if (changedFormat(MODE_COUNTUP,idCUFormat,server->arg(i).toInt(),changed)) {
+          guiUpdate = true;
+        }
+      }
+      else if (server->argName(i) == idCLFormat) {
+        if (changedFormat(MODE_CLOCK,idCLFormat,server->arg(i).toInt(),changed)) {
+          guiUpdate = true;
+        }
+      }
+      else if (server->argName(i) == idTimeStart) {
+        if (config->getTimeStart() != server->arg(i)) {
+          config->setTimeStart(server->arg(i));
+          changed++;
+        }
+      }
+      else if (server->argName(i) == idTimeEnd) {
+        if (config->getTimeEnd() != server->arg(i)) {
+          config->setTimeEnd(server->arg(i));
+          changed++;
+        }
+      }
+      else if (server->argName(i) == idSSID) {
+        config->_apSSID = server->arg(i);
+        changed++;
+        reboot = true;
+      }
+      else if (server->argName(i) == idPassword)  {
+        config->_apPassword = server->arg(i);
+        changed++;
+        reboot = true;
+      } 
+    }
+  }
+  //PVL(changed);
+ 
+  if (guiUpdate) {
+    display->refresh(); 
+  }
+
+  if (changed>0) {
+    config->saveFile();
+  }
+
+  if (reboot) {
+    extern void reboot(void);
+    reboot();
+  }
+
+  page += "</h1>";
+  pageInfo("handleConfigSave",page);
+  server->send(200, "text/html", "done");
+}
 
 void handleSyncTime() {
   DateTime dt = rtClock->now();
@@ -520,67 +519,47 @@ void handleSyncTime() {
   </table>
   <br>
   <br>
-  <form action="/get" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
-  <label for="syncTime">Sync This</label><input type="text" id="syncTime" name="syncTime">
+  <form action="/syncget" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
+  )";
+  page += "<label for=" + quote(idSyncTime) + ">Sync to this </label>";
+  page += "<input type='text' id=" + quote(idSyncTime) + " name=" + quote(idSyncTime) + ">";
+  page += R"(
   <br>
   <br>
   <button type='submit' name='btn' value='Sync'>Sync</button>
   </form>
-  )";
-
-
-#ifdef YURIJ
-  page += R"(
-  <p>Clock Time = <span id="isodt"> </span></p>
-  <form action="/get" method ="GET">
-    <p>
-    <label for="input1">Input 1:</label>
-    <input type="text" id="input1" name="input1">
-    <label for="countdown-time">Countdown to: </label>
-    <input type="datetime-local" id="countdown-time" name="countdown-time" value= )";
-  page += quote(now);
-  page += R"(min="2000-06-07T00:00" max="2035-06-14T00:00"/><br>
-    <p> <button type='submit' name='btn' value='save' >Save</button> </p>
- )";
- #endif
- 
-  page += R"(
+  <br> 
+  <form method='get' action='/'><button type='submit'>Home</button></form>
 </body> 
+
 <script>
-  var datetime = new Date();
-  var isotime = datetime.toISOString();
-  time = isotime.substr(0,isotime.length-5);
-  document.getElementById("cellTime").textContent = time;
-  document.getElementById("syncTime").value = time;
+  var dt = new Date();
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  var isotime = dt.toISOString();
+  isotime = isotime.substr(0,isotime.length-5);
+  document.getElementById("cellTime").textContent = isotime;
+  document.getElementById("syncTime").value = isotime;
 </script>
+
 </html>)";
-  P("about to send from sync page "); PVL(page.length());
+  pageInfo("handleSyncTime",page);
   server->send(200, "text/html", page);
+  //<a href="/"><button>wReturn</button></a>
 }
 
-void handleConfigGet() {
-  P("handleConfigGet at");PL() 
+
+void handleSyncTimeGet() {
   String page="<h1>";
-  page += rtClock->now().timestamp() + "<br>" + NL;
-  
   for(int i=0; i<server->args();i++) {
     page += server->argName(i) + "=|" + server->arg(i) + "| <br>" + NL;
-    P(i); PV(server->argName(i)); SP; PVL(server->arg(i));
+    if (server->arg(i).length()) {
+      //P(i); P(") argName=|");P(server->argName(i)); P("| arg=|"); P(server->arg(i));PL("|");
+      if (server->argName(i) == idSyncTime) {
+        rtClock->adjust(DateTime(server->arg(i).c_str()));
+      }
+    }
   }
   page += "</h1>";
+  pageInfo("handleSyncTimeGet",page);
   server->send(200, "text/html", page);
-  
-  PL("responded")
 }
-
-#ifdef YURIJ
-  page += R"(
-    <p>
-    <label for="input1">Input 1:</label>
-    <input type="text" id="input1" name="input1">
-    <label for="countdown-time">Countdown to: </label>
-    <input type="datetime-local" id="countdown-time" name="countdown-time" value=)";
-page += "\"" + now + "\" ";
-page += R"(min="2000-06-07T00:00" max="2035-06-14T00:00"/><br><p>)";
-#endif
-

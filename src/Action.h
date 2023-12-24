@@ -5,24 +5,26 @@
 class Action {
   public:
     enum Type {
-      UNKNOWN, SPLASH, DEMO, FINAL
+      UNKNOWN, SPLASH, DEMO, INFO, FINAL
     };
     Action() : _active(false) {}
-    void      splash(const String& msg, int prevMode, ulong duration=5000);
-    void      demo(const String& msg, int prevMode, const DateTime&);
-    void      start(Type id, const String& msg, int prevMode, ulong duration=5000, bool blinking=false);
+    void      splash(const String& msg, ulong duration=5000);
+    void      demo(const String& msg, const DateTime&);
+    void      info(const String& msg, const DateTime&);
+    void      start(Type id, const String& msg, ulong duration=5000, bool blinking=false);
 
     void      stop(void);
     bool      active(void) { return _active;}
     bool      expired(ulong ms=0); 
     void      print(const char* msg=nullptr);
 
-    int             getPrevMode(void) { return _prevMode;}
+    void            setPrevDisplay(void);
     const String&   getMsg(void) { return _msg;}
     const DateTime& getExpireTime(void) { return _expireTime;}
     bool            isBlinking(void) { return _blinking;}
 
-    int         _prevMode;      
+    int         _prevMode; 
+    int         _prevFormat;
     DateTime    _prevDateTime;  // used to save origanl countdim timw
     
     ulong       _start;     

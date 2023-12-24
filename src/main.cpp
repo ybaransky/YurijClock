@@ -36,12 +36,12 @@ struct TickType {
 };
 
 WebServer* initWebServer(void) {
-  extern  void  handleConfigGet(void);
-  extern  void  handleConfigClock(void);
-  extern  void  handleSyncTime(void);
+  extern  void  handleConfigSetup(void);
   extern  void  handleConfigSave(void);
   extern  void  handleConfigView(void);
   extern  void  handleConfigDelete(void);
+  extern  void  handleSyncTime(void);
+  extern  void  handleSyncTimeGet(void);
   extern  void  handleReboot(void);
 
   WebServer* server = new ESP8266WebServer(80); 
@@ -53,14 +53,15 @@ WebServer* initWebServer(void) {
     PL("Access point failed!");
   }
  
-  server->on("/",       handleConfigClock);
-  server->on("/get",    handleConfigGet);
-  server->on("/config", handleConfigClock);
-  server->on("/sync",   handleSyncTime);
-  server->on("/save",   handleConfigSave);
-  server->on("/view",   handleConfigView);
-  server->on("/delete", handleConfigDelete);
-  server->on("/reboot", handleReboot);
+  server->on("/",        handleConfigSetup);
+  server->on("/setup",   handleConfigSetup);
+  server->on("/save",    handleConfigSave);
+  server->on("/view",    handleConfigView);
+  server->on("/delete",  handleConfigDelete);
+
+  server->on("/sync",    handleSyncTime);
+  server->on("/syncget", handleSyncTimeGet);
+  server->on("/reboot",  handleReboot);
   server->begin();
   PL("Webserver started")
 
@@ -74,6 +75,7 @@ WebServer* initWebServer(void) {
 */
 
 volatile bool EVENT_CLOCK_1_SEC  = false;
+volatile bool EVENT_DEMO_START   = false;
 
 void schedulerCB1sec(void) { EVENT_CLOCK_1_SEC = true;}
 Task clock1sec(1000, TASK_FOREVER, &schedulerCB1sec);
@@ -106,7 +108,7 @@ void setup() {
   scheduler = initScheduler();
 
   // this is the startup message
-  message = config->_msgStart;
+  message = config->getMsgStart();
 
   // get the rtc rtClock going, but is not found or working
   // then usef the soft rtClock, and set an error msg
@@ -130,8 +132,7 @@ void setup() {
   // and then drop into the saved mode
   timer100ms.start(100);
   timer500ms.start(500);
-  action.splash(message,config->getMode(),1000); 
-  config->setMode(MODE_TEXT);
+  action.splash(message, 5000); 
 
   server = initWebServer();
 }
@@ -167,8 +168,17 @@ void loop() {
     }
     */
     if (dt.second()%5==0) {
-      P(dt.timestamp()); P(WiFi.softAPIP()); PL(modeNames[config->getMode()]);
+      P(dt.timestamp()); P(" mode="); P(modeNames[config->getMode()]); SPACE
+      P("addr="); P(WiFi.softAPIP()); P(" clients=");P(WiFi.softAPgetStationNum());
+      PL("");
     }
+  }
+
+  if (EVENT_DEMO_START) {
+    EVENT_DEMO_START=false;
+    action.demo(config->getMsgEnd(), dt);
+    display->refresh();
+    timer500ms.reset();
   }
  
   // just the 1/10 second timer.
@@ -187,46 +197,36 @@ void loop() {
   if (action.active()) {
     if (action.expired()) {
       action.stop();
-      config->setMode(action.getPrevMode());
+      action.setPrevDisplay();
+      display->refresh();
     }
   }
  
   if (BUTTON_SINGLE_CLICK) {
     BUTTON_SINGLE_CLICK = false;
     PL("single button click ");
-    config->setFormat(config->getNextFormat());
-    config->print();
-//    display->clear(); // in case we caught a blink
+    action.info(WiFi.softAPIP().toString(), dt);
+    action.print("***** starting action: ");
+    display->refresh();
+    timer500ms.reset();
   }
 
   if (BUTTON_DOUBLE_CLICK) {
     BUTTON_DOUBLE_CLICK = false;
     PL("double button click");
-    config->setMode(config->getNextMode());
-    config->print();
-//    display->clear(); // in case we caught a blink
-
-    if (config->getMode()==MODE_TEXT) {
-      message = config->_msgFinal;
-      timer500ms.reset();
-      P("setting to test mode... ");PVL(message);
-    }
-    PL("*************************************************************");
+    action.demo(config->getMsgEnd(), dt);
+    display->refresh();
+    timer500ms.reset();
   }
 
   if (BUTTON_LONG_CLICK) {
     BUTTON_LONG_CLICK = false;
-    PL("Long button click sarting demo mode");
-    action.demo(config->_msgFinal, config->getMode(), dt);
-    action.print("***** starting action: ");
-    config->setMode(MODE_COUNTDOWN);
-    config->print();
-    timer500ms.reset();
-    /*
-    DateTime dt(F(__DATE__),F(__TIME__));
-    P("longPress"); P(" adjusting Datetime to: "); PL(dt.timestamp(DateTime::TIMESTAMP_FULL));
-    rtClock->adjust(dt);
-    */
+    PL("Long button click");
+    delay(2000);
+    config->init();
+    config->saveFile();
+    extern void reboot(void);
+    reboot();
   }
 
  if (updateDisplay) {
@@ -237,7 +237,7 @@ void loop() {
         if (action.active()) {
           expireTime = action.getExpireTime();
         } else {
-          expireTime = DateTime(config->_timeFinal.c_str());
+          expireTime = DateTime(config->getTimeEnd().c_str());
         }
         ts = TimeSpan(expireTime.unixtime() - dt.unixtime());
         display->showCount(ts, count ? 10-count : count);
@@ -253,11 +253,10 @@ void loop() {
         break;
       case MODE_TEXT:
         if (action.active()) {
-            message = action.getMsg();
-            visible = action.isBlinking() ? timer500ms.count()%2 : true;
-            action.print();
+          message = action.getMsg();
+          visible = action.isBlinking() ? timer500ms.count()%2 : true;
         } else {
-          message = config->_msgFinal;
+          message = config->getMsgEnd();
           visible = true;
         }
         display->showText(message, visible);
@@ -265,35 +264,11 @@ void loop() {
     }
   }
 }
-
 void  reboot(void) {
 //  delay(2000);
-  WiFi.forceSleepBegin();
-  ESP.restart();
-  //digitalWrite(D0, LOW);
+  PL("about to reboot")
+  if (false) {
+    WiFi.forceSleepBegin();
+    ESP.restart();
+  }
 }
-
-#ifdef YURIJ
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-
-const char* ssid = "YuriCloc";
-const char* password = "12345678";
-
-ESP8266WebServer server(80);
-
-void handleRoot() {
-  server.send(200, "text/plain", "Hello World!");
-}
-
-void setup() {
-  WiFi.softAP(ssid, password);
-  server.on("/", handleRoot);
-  server.begin();
-}
-
-void loop() {
-  server.handleClient();
-}
-#endif
-

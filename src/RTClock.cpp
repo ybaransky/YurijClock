@@ -56,6 +56,7 @@ bool RTClock::startTicking(void) {
 }
 
 void RTClock::adjust(const DateTime& dt) {
+    P("RTClock::adjust "); PL(dt.timestamp());
     _rtcSoft->adjust(dt);
     if (_rtcHard) 
         _rtcHard->adjust(dt);
