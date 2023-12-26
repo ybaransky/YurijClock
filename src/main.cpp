@@ -39,13 +39,15 @@ WebServer* initWebServer(void) {
   extern  void  handleRoot(void);
   extern  void  handleClockMode(void);
 
-  extern  void  handleConfigSetup(void);
+  extern  void  handleClockSetup(void);
   extern  void  handleConfigSave(void);
   extern  void  handleConfigView(void);
   extern  void  handleConfigDelete(void);
 
-  extern  void  handleSyncTime(void);
-  extern  void  handleSyncTimeGet(void);
+  extern  void  handleSyncSetup(void);
+  extern  void  handleSyncSave(void);
+
+  extern  void  handleWifiSetup(void);
 
   extern  void  handleReboot(void);
 
@@ -58,19 +60,19 @@ WebServer* initWebServer(void) {
     PL("Access point failed!");
   }
  
-//  server->on("/",        handleConfigSetup);
-//  server->on("/setup",   handleConfigSetup);
   server->on("/",        handleRoot);
   server->on("/mode",    handleClockMode);
 
-  server->on("/setup",   handleConfigSetup);
+  server->on("/setup",   handleClockSetup);
   server->on("/save",    handleConfigSave);
   server->on("/view",    handleConfigView);
   server->on("/delete",  handleConfigDelete);
 
-  server->on("/sync",    handleSyncTime);
-  server->on("/syncget", handleSyncTimeGet);
-  server->on("/reboot",  handleReboot);
+  server->on("/sync",     handleSyncSetup);
+  server->on("/syncsave", handleSyncSave);
+
+  server->on("/wifi",     handleWifiSetup);
+  server->on("/reboot",   handleReboot);
   server->begin();
   PL("Webserver started")
 
@@ -240,13 +242,6 @@ void loop() {
     DateTime expireTime;
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
-        #ifdef YURIJ
-        if (action.active()) {
-          expireTime = action.getExpireTime();
-        } else {
-          expireTime = DateTime(config->getTimeEnd().c_str());
-        }
-        #endif
         expireTime = DateTime(config->getTimeEnd().c_str());
         ts = TimeSpan(expireTime.unixtime() - rtc.unixtime());
         display->showCount(ts, count ? 10-count : count);
@@ -274,7 +269,6 @@ void loop() {
       case MODE_DEMO:
         // this has the countdown part and the text part
         if (action.getSecsRemaining()>=0) {
-          P(millis()); SPACE; PL(action.getSecsRemaining());
           ts = TimeSpan(action.getSecsRemaining());
           display->showCount(ts, count ? 10-count : count);
         } else {

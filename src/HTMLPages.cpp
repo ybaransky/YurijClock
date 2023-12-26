@@ -21,7 +21,6 @@ static  const String     TABLE = "<table width='95%' align='center'>";
 
 static  const String     idMsgStart("msgStart");
 static  const String     idMsgEnd("msgEnd");
-static  const String     idMode("mode");
 static  const String     idCDFormat("cdFormat");
 static  const String     idCUFormat("cuFormat");
 static  const String     idCLFormat("clFormat");
@@ -70,15 +69,14 @@ static void pageInfo(const char* msg, const String& page)  {
 static String inputFieldText(const String& id, const String& text, int size=0) 
 {
   String input = NL;
-  String ssize(size);
   input += "<input ";
   input += "type='text' ";
   input += "id="          + quote(id)  + BLANK;
   input += "name="        + quote(id)  + BLANK;
   input += "placeholder=" + quote(text) + BLANK;
   if (size) {
-    input += "maxlength="    + ssize + BLANK;
-    input += "size="         + ssize + BLANK;
+    input += "maxlength="    + quote(size) + BLANK;
+    input += "size="         + quote(size) + BLANK;
   }
   input += ">";
   return input;
@@ -145,19 +143,55 @@ static String addRootButton(const String& id, const char* text,  bool active) {
   return field;
 }
 
+void handleWifiSetup(void) {
+  const char* fcn="handleNetworkSetup";
 
-
-void handleConfigSetup(void) {
-  const char* fcn="handleConfigSetup";
-  DateTime dt = rtClock->now();
-  String now = dt.timestamp();
-  now.remove(now.length()-3); // get rid of the seconds
-
-  String time;
   String field;
   String page = R"(<!DOCTYPE html>)";
   page += FPSTR(STYLE_HEAD);
-  
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>Wifi Setup</h3><hr><br>
+  <form action='/wifi' method='GET'>
+  )";
+  //<form action="/save" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
+/*********************************************************************
+ *   Network 
+ ********************************************************************/
+  page += TABLE;
+  page += R"(
+  <caption>Access point Setup</caption>
+  <col width='50%'><col width='50%'>
+  )";
+  field = inputFieldText(idSSID, config->_apSSID, 12);
+  page += addInputRow("Hotspot Name", field);
+  field = inputFieldText(idPassword, config->_apPassword, 10);
+  page += addInputRow("Hotspot Password", field);
+  page += R"(</table><br>
+
+  <p><button type='submit' formtarget='_self' name='btn' value='savewifi' >Save</button></p> 
+  </form> 
+  <a href='/reboot' align=center><b>Reboot Clock</b></a>
+ )";
+  PL(page);
+  pageInfo(fcn,page);
+  PL("hey!!!!");
+  if (server->arg("btn").equals("savewifi")) {
+    PL("this came from the wifei sabe button")
+  } else {
+    PL("this came from the elsewhere")
+  }
+  server->send(200, "text/html", page);
+}
+
+void handleClockSetup(void) {
+  const char* fcn="handleClockSetup";
+  //String time;
+  String field;
+
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
   page += R"(
 <body>
   <div style='text-align:center; min-width:260px'>
@@ -166,11 +200,62 @@ void handleConfigSetup(void) {
   page += R"( Setup</h3><hr><br>
   <form action="/save" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
   )";
+/*********************************************************************
+ *   Countdown mode
+ ********************************************************************/
+  page += TABLE;
+  page += R"(
+  <caption>Countdown Setup</caption>
+  <col width='50%'><col width='50%'>
+  )";
+  //<tr><th>Setting</th><th>Value</th></tr>
+  field = inputFieldComboBox(idCDFormat,
+    formatNamesCountDown,config->getFormat(MODE_COUNTDOWN),N_FORMAT_COUNTDOWN);
+  page += addInputRow("Format", field);
+  field = inputFieldDateTime(idTimeEnd,config->getTimeEnd());
+  page += addInputRow("End time", field);
+  page += R"(</table><br>
 
-/*
- *   START / STOP  MESSAGE
- */
+  )";
+/*********************************************************************
+ *   Countup mode
+ ********************************************************************/
+  page += TABLE;
+  page += R"(
+  <caption>Countup Setup</caption>
+  <col width='50%'><col width='50%'>
+  )";
+  //<tr><th>Setting</th><th>Value</th></tr>
+  field = inputFieldComboBox(idCUFormat,
+    formatNamesCountUp,config->getFormat(MODE_COUNTUP),N_FORMAT_COUNTUP);
+  page += addInputRow("Format", field);
+  field = inputFieldDateTime(idTimeStart,config->getTimeStart());
+  page += addInputRow("Start time", field);
+  page += R"(</table><br>
 
+  )";
+/*********************************************************************
+ *   Clock mode
+ ********************************************************************/
+  page += TABLE;
+  page += R"(
+  <caption>Clock Setup</caption>
+  <col width='50%'><col width='50%'>
+  )";
+  field = inputFieldComboBox(idCLFormat,
+    formatNamesClock,config->getFormat(MODE_CLOCK),N_FORMAT_CLOCK);
+  page += addInputRow("Format", field);  
+  page += R"(<tr><td class='right border grey'>)";
+  page += config->_apSSID; 
+  page += R"( Time</td><td class='left border'>)"; 
+  page += rtClock->now().timestamp(); 
+  page += R"(</td></tr> 
+    </table><br>
+
+ )";
+/*********************************************************************
+ * Start/Stop Messages
+ ********************************************************************/
   page += TABLE;
   page += R"(
   <caption>Start/Final Message</caption>
@@ -184,121 +269,18 @@ void handleConfigSetup(void) {
   page += R"(</table><br>
 
   )";
-
-#ifdef YURIJ
-  page += TABLE;
-  page += R"(
-  <caption>Clock Mode</caption>
-  <tr><td>)";
-  const int values[] = {MODE_COUNTDOWN, MODE_COUNTUP, MODE_CLOCK};
-  page += inputFieldRadio(idMode, modeNames, values, config->getMode(), 3); 
-  page += R"(</td></tr>
-  </table><br>
-
-  )";
-#endif
-
-/*
- *   Countdown mode
- */
-
-  page += TABLE;
-  page += R"(
-  <caption>Countdown Mode Setup</caption>
-  <col width='50%'><col width='50%'>
-  )";
-  //<tr><th>Setting</th><th>Value</th></tr>
-  field = inputFieldComboBox(idCDFormat,
-    formatNamesCountDown,config->getFormat(MODE_COUNTDOWN),N_FORMAT_COUNTDOWN);
-  page += addInputRow("Format", field);
-  field = inputFieldDateTime(idTimeEnd,config->getTimeEnd());
-  page += addInputRow("End time", field);
-  page += R"(</table><br>
-
-  )";
-
-/*
- *   Countup mode
- */
-
-  page += TABLE;
-  page += R"(
-  <caption>Countup Mode Setup</caption>
-  <col width='50%'><col width='50%'>
-  )";
-  //<tr><th>Setting</th><th>Value</th></tr>
-  field = inputFieldComboBox(idCUFormat,
-    formatNamesCountUp,config->getFormat(MODE_COUNTUP),N_FORMAT_COUNTUP);
-  page += addInputRow("Format", field);
-  field = inputFieldDateTime(idTimeStart,config->getTimeStart());
-  page += addInputRow("Start time", field);
-  page += R"(</table><br>
-
-  )";
-
-/*
- *   Clock mode
- */
-
-  page += TABLE;
-  page += R"(
-  <caption>Clock Mode Setup</caption>
-  <col width='50%'><col width='50%'>
-  )";
-  //<tr><th>Setting</th><th>Value</th></tr>
-  field = inputFieldComboBox(idCLFormat,
-    formatNamesClock,config->getFormat(MODE_CLOCK),N_FORMAT_CLOCK);
-  page += addInputRow("Format", field);  
-  
-  
-  page += R"(<tr><td class='right border grey'>)";
-  page += config->_apSSID; 
-  page += R"( Time</td><td class='left border'>)"; 
-  page += rtClock->now().timestamp(); 
-  page += R"(</td></tr> 
-    </table><br>
-
- )";
-/*
- *   Form Buttons
- */
-
+/*********************************************************************
+ * Form Buttons
+ ********************************************************************/
 page += R"(
-     <p>
-     <button type='submit' name='btn' value='save' >Save</button>
-     <button type='submit' name='btn' value='test' >Test</button>
-    </p>
-    <br> <br>
-    )";
+  <p>
+  <button type='submit' name='btn' value='saveclock' >Save</button> 
+  </form> 
+  <form method='GET' action='/sync'>
+  <button type='submit' name='btn' value='sync' >Sync Time</button> 
+  </form> 
 
-/*
- *   Network Settings
- */
-
-  page += TABLE;
-  page += R"(<caption>Access Point Wifi Settings</caption>
-  <col width='50%'><col width='50%'>
-  )";
-  //<tr><th>Message</th><th>Text</th></tr>
-  field = inputFieldText(idSSID, config->_apSSID, 12);
-  page += addInputRow("Hotspot Name", field);
-  field = inputFieldText(idPassword, config->_apPassword, 10);
-  page += addInputRow("Hotspot Password", field);
-  page += R"(</table><br>
-  )";
-
-  /*
-   * external links
-   */
-
-page += R"(
-  <a href='/sync'   align=center><b>Sync Clock</b></a><p>
-  <a href='/view'   align=center><b>View Config File</b></a><p>
-  <a href='/delete' align=center><b>Delete Config File</b></a><br>
-  <a href='/reboot' align=center><b>Reboot Clock</b></a>
- 
-  </form>
-</body> 
+  </body> 
 </html>)";
 
   pageInfo(fcn, page);
@@ -414,105 +396,103 @@ static bool changedFormat(int mode,const String& id, int value, int& changed) {
 
 void handleConfigSave() {
   const char* fcn = "handleConfigSave";
-  int changed = 0;
-  bool guiUpdate = false;
-  bool reboot = false;
-  int value;
-
-  if (server->arg("btn").equals("test")) {
-    extern bool EVENT_DEMO_START;
-    EVENT_DEMO_START = true;
-    server->send(200, "text/html", "entered test mode");
-    return;
-  }
-
   String page="<h1>";
-  for(int i=0; i<server->args();i++) {
-    page += server->argName(i) + "=|" + server->arg(i) + "| <br>" + NL;
-    P(i); P(") argName=|");P(server->argName(i)); P("| arg=|"); P(server->arg(i));PL("|");
-    if (server->arg(i).length()) {
+  String row;
 
-      if (server->argName(i) == idMode) {
-        value = server->arg(i).toInt();
-        if (config->getMode() != value) {
-          config->setMode(value);
-          guiUpdate = true;
-          changed++;
+  if (server->arg("btn").equals("savewifi")) {
+    bool reboot = false;
+    // this is from the WiFiSetup page
+    for(int i=0; i<server->args();i++) {
+      row = server->argName(i) + "=|" + server->arg(i) + "| <br>";
+      page += row + NL;
+      P(i); P(") "); PL(row);
+      if (server->argName(i) == idSSID) {
+        if (config->getSSID() != server->arg(i)) {
+          config->setSSID(server->arg(i));
+          reboot = true;
+        }
+      } else if (server->argName(i) == idPassword)  {
+        if (config->getPassword() != server->arg(i)) {
+          config->setPassword(server->arg(i));
+          reboot = true;
         }
       }
-      else if (server->argName(i) == idMsgStart) {
-        if (config->getMsgStart() != server->arg(i)) {
-          config->setMsgStart(server->arg(i));
-          changed++;
+      handleWifiSetup();
+      if (reboot) {
+        PL("should  save config and reboot")
+        extern void reboot(void);
+      } 
+      return;
+    }
+  } else if (server->arg("btn").equals("saveclock")) {
+    int value;
+    int changed = 0;
+    bool guiUpdate = false;  
+    // this is from the ClockSetup page
+    for(int i=0; i<server->args();i++) {
+      row = server->argName(i) + "=|" + server->arg(i) + "| <br>";
+      page += row + NL;
+      P(i); P(") "); PL(row);
+
+      //if (server->arg(i).length()) {
+      if (false) {
+        if (server->argName(i) == idMsgStart) {
+          if (config->getMsgStart() != server->arg(i)) {
+            config->setMsgStart(server->arg(i));
+            changed++;
+          }
         }
-      }
-      else if (server->argName(i) == idMsgEnd) {
-        if (config->getMsgEnd() != server->arg(i)) {
-          config->setMsgEnd(server->arg(i));
-          changed++;
+        else if (server->argName(i) == idMsgEnd) {
+          if (config->getMsgEnd() != server->arg(i)) {
+            config->setMsgEnd(server->arg(i));
+            changed++;
+          }
         }
-      }
-      else if (server->argName(i) == idCDFormat) {
-        if (changedFormat(MODE_COUNTDOWN,idCDFormat,server->arg(i).toInt(),changed)) {
-          guiUpdate = true;
+        else if (server->argName(i) == idCDFormat) {
+          if (changedFormat(MODE_COUNTDOWN,idCDFormat,server->arg(i).toInt(),changed)) {
+            guiUpdate = true;
+          }
         }
-      }
-      else if (server->argName(i) == idCUFormat) {
-        if (changedFormat(MODE_COUNTUP,idCUFormat,server->arg(i).toInt(),changed)) {
-          guiUpdate = true;
+        else if (server->argName(i) == idCUFormat) {
+          if (changedFormat(MODE_COUNTUP,idCUFormat,server->arg(i).toInt(),changed)) {
+            guiUpdate = true;
+          }
         }
-      }
-      else if (server->argName(i) == idCLFormat) {
-        if (changedFormat(MODE_CLOCK,idCLFormat,server->arg(i).toInt(),changed)) {
-          guiUpdate = true;
+        else if (server->argName(i) == idCLFormat) {
+          if (changedFormat(MODE_CLOCK,idCLFormat,server->arg(i).toInt(),changed)) {
+            guiUpdate = true;
+          }
         }
-      }
-      else if (server->argName(i) == idTimeStart) {
-        if (config->getTimeStart() != server->arg(i)) {
-          config->setTimeStart(server->arg(i));
-          changed++;
+        else if (server->argName(i) == idTimeStart) {
+          if (config->getTimeStart() != server->arg(i)) {
+            config->setTimeStart(server->arg(i));
+            changed++;
+          }
         }
-      }
-      else if (server->argName(i) == idTimeEnd) {
-        if (config->getTimeEnd() != server->arg(i)) {
-          config->setTimeEnd(server->arg(i));
-          changed++;
+        else if (server->argName(i) == idTimeEnd) {
+          if (config->getTimeEnd() != server->arg(i)) {
+            config->setTimeEnd(server->arg(i));
+            changed++;
+          }
         }
-      }
-      else if (server->argName(i) == idSSID) {
-        config->_apSSID = server->arg(i);
-        changed++;
-        reboot = true;
-      }
-      else if (server->argName(i) == idPassword)  {
-        config->_apPassword = server->arg(i);
-        changed++;
-        reboot = true;
       } 
     }
-  }
-  //PVL(changed);
+    PVL(changed);
  
-  if (guiUpdate) {
-    display->refresh(fcn); 
-  }
+    if (guiUpdate) {
+      display->refresh(fcn); 
+    }
 
-  if (changed>0) {
-    config->saveFile();
+    if (changed>0) {
+      PL("should save config");
+    //   config->saveFile();
+    }
+    handleClockSetup();
   }
-
-  if (reboot) {
-    extern void reboot(void);
-    reboot();
-  }
-
-  page += "</h1>";
-  pageInfo(fcn,page);
-  server->send(200, "text/html", "done");
 }
 
-void handleSyncTime() {
-  const char* fcn = "handleSyncTime";
+void handleSyncSetup() {
+  const char* fcn = "handleSyncSetup";
   DateTime dt = rtClock->now();
   String now = dt.timestamp();
 //  now.remove(now.length()-3); // get rid of the seconds
@@ -540,11 +520,12 @@ void handleSyncTime() {
   </table>
   <br>
   <br>
-  <form action="/syncget" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
+  <form action="/syncsave" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
   )";
   page += "<label for=" + quote(idSyncTime) + ">Sync to this </label>";
   page += "<input type='text' id=" + quote(idSyncTime) + " name=" + quote(idSyncTime) + ">";
   page += R"(
+  <p>
   <br>
   <br>
   <button type='submit' name='btn' value='Sync'>Sync</button>
@@ -565,11 +546,10 @@ void handleSyncTime() {
 </html>)";
   pageInfo(fcn,page);
   server->send(200, "text/html", page);
-  //<a href="/"><button>wReturn</button></a>
 }
 
-void handleSyncTimeGet() {
-  const char* fcn="handleSyncTimeGet";
+void handleSyncSave() {
+  const char* fcn="handleSyncSave";
   String page="<h1>";
   for(int i=0; i<server->args();i++) {
     page += server->argName(i) + "=|" + server->arg(i) + "| <br>" + NL;
@@ -607,11 +587,20 @@ void handleRoot(void) {
   page += addRootButton(idDemoBtn,"Demo",       mode==MODE_DEMO);
   page += R"(
   </form>
-  <br><br><br><br><br><br><br><br>
-  <form action="/setup" method ="GET">
-  <button type='submit' name='btn' value='setup' >Setup</button>
-  </form>
+  <br><br><br><br><br><br>
+  <a href='/setup'  align=center><b>Clock Setup</b></a><p>
+  <a href='/wifi'   align=center><b>Wifi Setup</b></a><p>
+  <a href='/view'   align=center><b>View Config File</b></a><p>
+  <a href='/delete' align=center><b>Delete Config File</b></a><p>
   )";
+  #ifdef YURIJ
+  <form action="/setup" method ="GET">
+  <button type='submit' name='btn' value='clksetup' >Clock Setup</button><br><br>
+  </form>
+  <form action="/network" method ="GET">
+  <button type='submit' name='btn' value='netsetup' >Wifi Setup</button><br><br>
+  </form>
+  #endif
   pageInfo(fcn,page);
   server->send(200, "text/html", page);
 }

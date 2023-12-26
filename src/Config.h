@@ -33,6 +33,8 @@ class Config {
 
         void            setSSID(const String&);
         const String&   getSSID(void);
+        void            setPassword(const String&);
+        const String&   getPassword(void);
 
         const String&   getFileName() const;
         void            saveFile(void) const;

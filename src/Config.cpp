@@ -102,6 +102,8 @@ bool  Config::isTenthSecFormat(void) {
 
 const String& Config::getSSID(void) { return _apSSID;}
 void          Config::setSSID(const String& ssid) {_apSSID = ssid;} 
+const String& Config::getPassword(void) { return _apPassword;}
+void          Config::setPassword(const String& password) {_apPassword = password;} 
 
 uint8_t Config::getBrightness(void) { return _brightness;}
 void    Config::setBrightness(uint8_t brightness) { _brightness = brightness; }
