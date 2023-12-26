@@ -86,11 +86,16 @@ const char* formatNamesText[N_FORMAT_CLOCK] = {
   " Left justified",
 };
 
-const char** formatNames[N_MODES] = {formatNamesCountDown, formatNamesCountUp, formatNamesClock, formatNamesText};
+const char* formatNamesDemo[N_FORMAT_DEMO] = {
+  "dd D | hh:mm |  ss.u",
+};
+
+const char** formatNames[N_MODES] = {formatNamesCountDown, formatNamesCountUp, formatNamesClock, formatNamesText,formatNamesDemo};
 
 const char* modeNames[N_MODES] = {
   "Countdown", 
   "Countup", 
   "Clock", 
   "Text", 
+  "Demo", 
 };

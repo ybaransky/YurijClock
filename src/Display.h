@@ -12,7 +12,7 @@ class Display {
 
     void    showInteger(int32_t);
 //    void    setBrightness();
-    void    refresh(void);
+    void    refresh(const char* caller=nullptr);
 
     void    showCount(const TimeSpan&, uint8_t tenth=0);
     void    showClock(const DateTime&, uint8_t tenth=0);

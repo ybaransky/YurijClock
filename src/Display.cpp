@@ -79,9 +79,14 @@ void Display::showInteger(int32_t ival) {
       _segments[i].device().showNumberDec(parts[i],false);
 }
 
-void  Display::refresh(void) {
-  PL("display::refresh called;")
+void  Display::refresh(const char* caller) {
+  if (caller) {
+    P("display::refresh (doing nothing) called from ");PL(caller);
+  } else {
+    PL("display::refresh (doing nothing)" );
+  }
 }
+
 /*
 ******************************************************************************************
 ****************** Public ****************************************************************

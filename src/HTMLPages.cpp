@@ -30,6 +30,10 @@ static  const String     idTimeStart("timeStart");
 static  const String     idSSID("ssid");
 static  const String     idPassword("password");
 static  const String     idSyncTime("syncTime");
+static  const String     idCDBtn("cdBtn");
+static  const String     idCUBtn("cuBtn");
+static  const String     idCLBtn("clBtn");
+static  const String     idDemoBtn("demoBtn");
 
 
 static  const char STYLE_BUTTON[] PROGMEM = R"(
@@ -49,12 +53,13 @@ static  const char  STYLE_HEAD[] PROGMEM = R"(
     td.right    {text-align:right;}
     td.grey     {background-color:#f2f2f2;}
     caption     {font-weight:bold;}
-    button      {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}
+    button      {border-radius:0.3rem;line-height:2.4rem;font-size:1.2rem;width:40%;}
     input[type='text'], input[type='number'] {font-size:100%; border:2px solid red}
   </style>
 </head>
 )";
 
+//    button      {border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:40%;}
 static const String quote(const String& text) { return QUOTE + text + QUOTE; }
 static const String quote(const int        i) { return QUOTE + String(i) + QUOTE; }
 
@@ -106,6 +111,7 @@ static String inputFieldComboBox(const String& id, const char* choices[], int ic
   return input;
 }
 
+#ifdef YURIJ
 static String inputFieldRadio(const String& id, const char* choices[], const int* values, int choice, int n) {
   String input = "";
   for(int i=0;i<n;i++) {
@@ -116,6 +122,7 @@ static String inputFieldRadio(const String& id, const char* choices[], const int
   }
   return input;
 }
+#endif
 
 static String addInputRow(const char* desc, const String& value) {
   String row("");
@@ -128,7 +135,20 @@ static String addInputRow(const char* desc, const String& value) {
   return row;
 }
 
+static String addRootButton(const String& id, const char* text,  bool active) {
+  //<button type='submit' name='btn' value='cntdn' style='background-color:aquamarine;'>Count Down</button>
+  String field = "<button type='submit' name='btn' value=";
+  field += quote(id);
+  if (active) 
+    field += String(" style='background-color:aquamarine;'");
+  field += " >" + String(text) + "</button><br><br>" + NL;
+  return field;
+}
+
+
+
 void handleConfigSetup(void) {
+  const char* fcn="handleConfigSetup";
   DateTime dt = rtClock->now();
   String now = dt.timestamp();
   now.remove(now.length()-3); // get rid of the seconds
@@ -165,10 +185,7 @@ void handleConfigSetup(void) {
 
   )";
 
-/*
- *   MODE CHOICE (Radio Buttons)
- */
-
+#ifdef YURIJ
   page += TABLE;
   page += R"(
   <caption>Clock Mode</caption>
@@ -179,6 +196,7 @@ void handleConfigSetup(void) {
   </table><br>
 
   )";
+#endif
 
 /*
  *   Countdown mode
@@ -276,14 +294,15 @@ page += R"(
 page += R"(
   <a href='/sync'   align=center><b>Sync Clock</b></a><p>
   <a href='/view'   align=center><b>View Config File</b></a><p>
-  <a href='/delete' align=center><b>Delete Config File</b></a>
+  <a href='/delete' align=center><b>Delete Config File</b></a><br>
   <a href='/reboot' align=center><b>Reboot Clock</b></a>
  
   </form>
 </body> 
 </html>)";
 
-  pageInfo("handleConfigClock", page);
+  pageInfo(fcn, page);
+//  PL(page);
   server->send(200, "text/html", page);
   return;
 }
@@ -394,6 +413,7 @@ static bool changedFormat(int mode,const String& id, int value, int& changed) {
 }
 
 void handleConfigSave() {
+  const char* fcn = "handleConfigSave";
   int changed = 0;
   bool guiUpdate = false;
   bool reboot = false;
@@ -474,7 +494,7 @@ void handleConfigSave() {
   //PVL(changed);
  
   if (guiUpdate) {
-    display->refresh(); 
+    display->refresh(fcn); 
   }
 
   if (changed>0) {
@@ -487,11 +507,12 @@ void handleConfigSave() {
   }
 
   page += "</h1>";
-  pageInfo("handleConfigSave",page);
+  pageInfo(fcn,page);
   server->send(200, "text/html", "done");
 }
 
 void handleSyncTime() {
+  const char* fcn = "handleSyncTime";
   DateTime dt = rtClock->now();
   String now = dt.timestamp();
 //  now.remove(now.length()-3); // get rid of the seconds
@@ -542,13 +563,13 @@ void handleSyncTime() {
 </script>
 
 </html>)";
-  pageInfo("handleSyncTime",page);
+  pageInfo(fcn,page);
   server->send(200, "text/html", page);
   //<a href="/"><button>wReturn</button></a>
 }
 
-
 void handleSyncTimeGet() {
+  const char* fcn="handleSyncTimeGet";
   String page="<h1>";
   for(int i=0; i<server->args();i++) {
     page += server->argName(i) + "=|" + server->arg(i) + "| <br>" + NL;
@@ -560,6 +581,61 @@ void handleSyncTimeGet() {
     }
   }
   page += "</h1>";
-  pageInfo("handleSyncTimeGet",page);
+  pageInfo(fcn,page);
+  server->send(200, "text/html", page);
+}
+
+
+
+void handleRoot(void) {
+  const char* fcn = "handleRoot";
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>)";
+  page += config->getSSID();
+  page += R"(</h3><hr>
+  <br>
+  <form action="/mode" method ="GET" onsubmit='setTimeout(function() {window.location.reload();},10)'>
+  )";
+  int mode = config->getMode();
+  page += addRootButton(idCDBtn,  "Count Down", mode==MODE_COUNTDOWN);
+  page += addRootButton(idCUBtn,  "Count Up",   mode==MODE_COUNTUP);
+  page += addRootButton(idCLBtn,  "Clock",      mode==MODE_CLOCK);
+  page += addRootButton(idDemoBtn,"Demo",       mode==MODE_DEMO);
+  page += R"(
+  </form>
+  <br><br><br><br><br><br><br><br>
+  <form action="/setup" method ="GET">
+  <button type='submit' name='btn' value='setup' >Setup</button>
+  </form>
+  )";
+  pageInfo(fcn,page);
+  server->send(200, "text/html", page);
+}
+
+void handleClockMode(void) {
+  const char* fcn="handleClockMode";
+  String page;
+
+  if (server->arg("btn").equals(idCDBtn))
+    config->setMode(MODE_COUNTDOWN,fcn);
+  else if (server->arg("btn").equals(idCUBtn))
+    config->setMode(MODE_COUNTUP,fcn);
+  else if (server->arg("btn").equals(idCLBtn))
+    config->setMode(MODE_CLOCK,fcn);
+  else if (server->arg("btn").equals(idDemoBtn)) {
+    extern bool EVENT_DEMO_START;
+    EVENT_DEMO_START = true;
+    server->send(200, "text/html", "entered demo mode");
+  }
+  display->refresh(fcn);
+
+  for(int i=0; i<server->args();i++) {
+    PL(String(i) + ") " + server->argName(i) + " len=" + String(server->arg(i).length()) + " arg==|" + server->arg(i) + "|");
+  }
+  pageInfo(fcn,page);
   server->send(200, "text/html", page);
 }

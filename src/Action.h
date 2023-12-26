@@ -5,29 +5,31 @@
 class Action {
   public:
     enum Type {
-      UNKNOWN, SPLASH, DEMO, INFO, FINAL
+      NONE, INFO, DEMO, FINAL
     };
     Action() : _active(false) {}
-    void      splash(const String& msg, ulong duration=5000);
-    void      demo(const String& msg, const DateTime&);
-    void      info(const String& msg, const DateTime&);
-    void      start(Type id, const String& msg, ulong duration=5000, bool blinking=false);
+    void      demo(const String& msg);
+    void      info(const String& msg, ulong duration);
+    void      start(Type id, const String& msg, ulong duration, bool blinking=false);
 
     void      stop(void);
+    void      tick(void);
+    bool      expired(void);
     bool      active(void) { return _active;}
-    bool      expired(ulong ms=0); 
     void      print(const char* msg=nullptr);
 
     void            setPrevDisplay(void);
     const String&   getMsg(void) { return _msg;}
-    const DateTime& getExpireTime(void) { return _expireTime;}
     bool            isBlinking(void) { return _blinking;}
+    bool            isDemoMode(void) { return _type == Type::DEMO;}
+    int             getSecsRemaining(void);
 
     int         _prevMode; 
     int         _prevFormat;
     DateTime    _prevDateTime;  // used to save origanl countdim timw
     
-    ulong       _start;     
+    ulong       _now;
+    ulong       _start;
     ulong       _duration;      // demo mode uses this to countdown, and this to blink the msg
     String      _msg;
 
@@ -35,5 +37,5 @@ class Action {
     bool        _blinking;
     Type        _type;   // splash, demo, final
 
-    DateTime    _expireTime;  // time the coundown goes to zero
+    ulong       _zeroTime;  // millis from start when demo should flip
 };

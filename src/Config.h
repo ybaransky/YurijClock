@@ -9,7 +9,7 @@ class Config {
 
         int             getMode(void);
         int             getNextMode(void);
-        void            setMode(int mode);
+        void            setMode(int mode, const char* caller=nullptr);
 
         int             getFormat(void);       // gets current mode format
         int             getFormat(int mode);   // gets mode format

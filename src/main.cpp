@@ -36,12 +36,17 @@ struct TickType {
 };
 
 WebServer* initWebServer(void) {
+  extern  void  handleRoot(void);
+  extern  void  handleClockMode(void);
+
   extern  void  handleConfigSetup(void);
   extern  void  handleConfigSave(void);
   extern  void  handleConfigView(void);
   extern  void  handleConfigDelete(void);
+
   extern  void  handleSyncTime(void);
   extern  void  handleSyncTimeGet(void);
+
   extern  void  handleReboot(void);
 
   WebServer* server = new ESP8266WebServer(80); 
@@ -53,7 +58,11 @@ WebServer* initWebServer(void) {
     PL("Access point failed!");
   }
  
-  server->on("/",        handleConfigSetup);
+//  server->on("/",        handleConfigSetup);
+//  server->on("/setup",   handleConfigSetup);
+  server->on("/",        handleRoot);
+  server->on("/mode",    handleClockMode);
+
   server->on("/setup",   handleConfigSetup);
   server->on("/save",    handleConfigSave);
   server->on("/view",    handleConfigView);
@@ -132,7 +141,7 @@ void setup() {
   // and then drop into the saved mode
   timer100ms.start(100);
   timer500ms.start(500);
-  action.splash(message, 5000); 
+  action.info(message, 2000); 
 
   server = initWebServer();
 }
@@ -144,11 +153,12 @@ void setup() {
 */
 
 void loop() {
+  const char* fcn="mainloop";
   bool updateDisplay = false;
   bool visible;
   TickType tickType;
   static TimeSpan ts;
-  static DateTime dt;
+  static DateTime rtc;
 
   server->handleClient();
   button->tick();
@@ -159,32 +169,27 @@ void loop() {
     tickType.sec  = true;
     updateDisplay = true;
 
-    dt = rtClock->now();  // only grab full date on second tick
+    rtc = rtClock->now();  // only grab full date on second tick
     timer100ms.reset();   // reset 1/10 second timer on a full second tick
 
-    /*
-    if (dt.second()%10==0) {
-      config->print();
-    }
-    */
-    if (dt.second()%5==0) {
-      P(dt.timestamp()); P(" mode="); P(modeNames[config->getMode()]); SPACE
+    if (rtc.second()%5==0) {
+      P(rtc.timestamp()); P(" mode="); P(modeNames[config->getMode()]); SPACE
       P("addr="); P(WiFi.softAPIP()); P(" clients=");P(WiFi.softAPgetStationNum());
       PL("");
     }
-  }
 
-  if (EVENT_DEMO_START) {
-    EVENT_DEMO_START=false;
-    action.demo(config->getMsgEnd(), dt);
-    display->refresh();
-    timer500ms.reset();
+    // start this on a second boundary
+    if (EVENT_DEMO_START) {
+      EVENT_DEMO_START=false;
+      action.demo(config->getMsgEnd());
+      timer500ms.reset();
+    }
   }
  
   // just the 1/10 second timer.
   if (timer100ms.tick()) {
     tickType.ms100 = true;
-    if (config->isTenthSecFormat())
+    if (config->isTenthSecFormat() || action.isDemoMode())
       updateDisplay  = true;
   }
 
@@ -195,27 +200,28 @@ void loop() {
   }
 
   if (action.active()) {
+    action.tick();
     if (action.expired()) {
       action.stop();
       action.setPrevDisplay();
-      display->refresh();
+      display->refresh(fcn);
     }
   }
  
   if (BUTTON_SINGLE_CLICK) {
     BUTTON_SINGLE_CLICK = false;
     PL("single button click ");
-    action.info(WiFi.softAPIP().toString(), dt);
+    action.info(WiFi.softAPIP().toString(),10000);
     action.print("***** starting action: ");
-    display->refresh();
+    display->refresh(fcn);
     timer500ms.reset();
   }
 
   if (BUTTON_DOUBLE_CLICK) {
     BUTTON_DOUBLE_CLICK = false;
     PL("double button click");
-    action.demo(config->getMsgEnd(), dt);
-    display->refresh();
+    action.demo(config->getMsgEnd());
+    display->refresh(fcn);
     timer500ms.reset();
   }
 
@@ -234,24 +240,28 @@ void loop() {
     DateTime expireTime;
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
+        #ifdef YURIJ
         if (action.active()) {
           expireTime = action.getExpireTime();
         } else {
           expireTime = DateTime(config->getTimeEnd().c_str());
         }
-        ts = TimeSpan(expireTime.unixtime() - dt.unixtime());
+        #endif
+        expireTime = DateTime(config->getTimeEnd().c_str());
+        ts = TimeSpan(expireTime.unixtime() - rtc.unixtime());
         display->showCount(ts, count ? 10-count : count);
-        if (expireTime <= dt)
+        if (expireTime <= rtc)
           config->setMode(MODE_TEXT);
         break;
       case MODE_COUNTUP :
-        ts = TimeSpan(dt.unixtime() - DateTime(config->_timeStart.c_str()).unixtime());
+        ts = TimeSpan(rtc.unixtime() - DateTime(config->getTimeStart().c_str()).unixtime());
         display->showCount(ts, count);
         break;
       case MODE_CLOCK:
-        display->showClock(dt, count);
+        display->showClock(rtc, count);
         break;
       case MODE_TEXT:
+        // we could be doing a splash screen or an info msg (like show me the IP address)
         if (action.active()) {
           message = action.getMsg();
           visible = action.isBlinking() ? timer500ms.count()%2 : true;
@@ -260,6 +270,20 @@ void loop() {
           visible = true;
         }
         display->showText(message, visible);
+        break;
+      case MODE_DEMO:
+        // this has the countdown part and the text part
+        if (action.getSecsRemaining()>=0) {
+          P(millis()); SPACE; PL(action.getSecsRemaining());
+          ts = TimeSpan(action.getSecsRemaining());
+          display->showCount(ts, count ? 10-count : count);
+        } else {
+          message = action.getMsg();
+          visible = action.isBlinking() ? timer500ms.count()%2 : true;
+          display->showText(message, visible);
+        }
+        break;
+      default :
         break;
     }
   }

@@ -15,10 +15,10 @@ const static String cfgFileName("/countdown.json");
 #define DEFAULT_TIME_START  "2023-12-22T14:45"    // no seconds
 #define DEFAULT_TIME_END    "2024-07-28T15:45"
 
-#define DEFAULT_MESSAGE_START "YuriCloc"
+#define DEFAULT_MESSAGE_START "AlexiCloc"
 #define DEFAULT_MESSAGE_END   "Good Luc"
 
-#define DEFAULT_AP_SSID       "YurijClock"
+#define DEFAULT_AP_SSID       "AlexClock"
 #define DEFAULT_AP_PASSWORD   "12345678"
 
 #define DEFAULT_MODE          MODE_COUNTDOWN
@@ -56,9 +56,11 @@ const String& Config::getFileName(void) const { return cfgFileName;}
 
 int   Config::getMode(void) { return _mode;}
 int   Config::getNextMode(void) { return (_mode+1)%N_MODES; }
-void  Config::setMode(int mode) { 
-  P(NAME); P("setMode"); P("changing mode from");
-  P(modeNames[_mode]);P("-->");PL(modeNames[mode]);
+void  Config::setMode(int mode, const char* caller) { 
+  const char* fcn="setMode";
+  P(NAME); P(fcn);
+  if (caller) { P(" called from "); P(caller);}
+  SPACE; P(modeNames[_mode]);P(" --> ");PL(modeNames[mode]);
   _mode = mode; 
 }
 
@@ -76,12 +78,12 @@ int   Config::getNextFormat(void) {
   }
 }
 void  Config::setFormat(int format) { 
-  P(NAME); P("setFormat"); P("changing format from");
+  P(NAME); P("setFormat"); P(" changing format ");
   P(_formats[_mode]); P("-->"); PL(format);
   _formats[_mode] = format;
 }
 void  Config::setFormat(int format, int mode) { 
-  P(NAME); P("setFormat(format,mode)"); P("changing format from ");
+  P(NAME); P("setFormat(format,mode)"); P(" changing format ");
   P(_formats[mode]); P(" --> "); PL(format);
   _formats[mode] = format;
 }

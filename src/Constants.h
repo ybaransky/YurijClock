@@ -19,8 +19,8 @@ enum  {
   SSUU=0,HHMM, DDDD, N_SEGMENTS,
   DIGITS_PER_SEGMENT=4,
   CHARS_PER_MESSAGE=12,
-  MODE_COUNTDOWN=0, MODE_COUNTUP, MODE_CLOCK, MODE_TEXT, N_MODES,
-  N_FORMAT_COUNTDOWN=8, N_FORMAT_COUNTUP=8, N_FORMAT_CLOCK=13, N_FORMAT_TEXT=1,
+  MODE_COUNTDOWN=0, MODE_COUNTUP, MODE_CLOCK, MODE_TEXT, MODE_DEMO, N_MODES,
+  N_FORMAT_COUNTDOWN=8, N_FORMAT_COUNTUP=8, N_FORMAT_CLOCK=13, N_FORMAT_TEXT=1, N_FORMAT_DEMO=1,
 };
 
 #define N_ITEMS(x)   (sizeof(x) / sizeof((x)[0]))     // number of elements in array x
@@ -35,5 +35,6 @@ extern const char* formatNamesCountDown[];
 extern const char* formatNamesCountUp[];
 extern const char* formatNamesClock[];
 extern const char* formatNamesText[];
+extern const char* formatNamesDemo[];
 
 extern const char* modeNames[];
