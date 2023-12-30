@@ -15,7 +15,7 @@ const static String cfgFileName("/countdown.json");
 #define DEFAULT_TIME_START  "2023-12-22T14:45"    // no seconds
 #define DEFAULT_TIME_END    "2024-07-28T15:45"
 
-#define DEFAULT_MESSAGE_START "AlexiCloc"
+#define DEFAULT_MESSAGE_START "AlexCloc"
 #define DEFAULT_MESSAGE_END   "Good Luc"
 
 #define DEFAULT_AP_SSID       "AlexClock"
@@ -37,8 +37,8 @@ Config* initConfig(void) {
 }
 
 void    Config::init(void) {
-  _timeStart  = DEFAULT_TIME_START;
-  _timeEnd    = DEFAULT_TIME_END;
+  setTimeStart(DEFAULT_TIME_START);
+  setTimeEnd(DEFAULT_TIME_END);
 
   _msgStart   = DEFAULT_MESSAGE_START;
   _msgEnd     = DEFAULT_MESSAGE_END;
@@ -79,7 +79,7 @@ int   Config::getNextFormat(void) {
 }
 void  Config::setFormat(int format) { 
   P(NAME); P("setFormat"); P(" changing format ");
-  P(_formats[_mode]); P("-->"); PL(format);
+  P(_formats[_mode]); P(" --> "); PL(format);
   _formats[_mode] = format;
 }
 void  Config::setFormat(int format, int mode) { 
@@ -116,15 +116,21 @@ static bool changedString(const char* desc, const String& before, const String& 
   return false;
 }
 
-const String& Config::getTimeStart(void) { return _timeStart;}
-void          Config::setTimeStart(const String& time) { 
-  if (changedString("timeStart", _timeStart, time))
+const DateTime& Config::getTimeStartDT(void) { return _timeStartDT;}
+const String&   Config::getTimeStart(void) { return _timeStart;}
+void            Config::setTimeStart(const String& time) { 
+  if (changedString("timeStart", _timeStart, time)) {
     _timeStart = time;
+    _timeStartDT = DateTime(_timeStart.c_str());
+  }
 }
-const String& Config::getTimeEnd(void) { return _timeEnd;}
-void          Config::setTimeEnd(const String& time) {
-  if (changedString("timeEnd", _timeEnd, time))
+const DateTime& Config::getTimeEndDT(void) { return _timeEndDT;}
+const String&   Config::getTimeEnd(void) { return _timeEnd;}
+void            Config::setTimeEnd(const String& time) {
+  if (changedString("timeEnd", _timeEnd, time)) {
     _timeEnd = time;
+    _timeEndDT = DateTime(_timeEnd.c_str());
+  }
 }
 
 const String& Config::getMsgStart(void) { return _msgStart;}
@@ -198,6 +204,7 @@ void Config::saveFile(void) const {
   saveToJson(doc);
   serializeJsonPretty(doc,Serial); PL("");
 
+  // don't need this
   if (FILESYSTEM.exists(filename)) 
     FILESYSTEM.remove(filename);
 
@@ -244,9 +251,9 @@ void Config::loadFromJson(const JsonDocument& doc) {
   _msgEnd = buffer;
 
   strlcpy(buffer, doc["time"]["start"] | _timeStart.c_str(), ISOTIME_SIZE+1); 
-  _timeStart = buffer;
+  setTimeStart(buffer);
   strlcpy(buffer, doc["time"]["end"] | _timeEnd.c_str(), ISOTIME_SIZE+1); 
-  _timeEnd = buffer;
+  setTimeEnd(buffer);
   
   strlcpy(buffer, doc["network"]["ssid"] | _apSSID.c_str(), SSID_SIZE+1); 
   _apSSID = buffer;

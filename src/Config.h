@@ -1,5 +1,6 @@
 #pragma once
 #include <ArduinoJson.h>
+#include <RTClib.h>
 #include "Constants.h"
 
 class Config {
@@ -20,8 +21,10 @@ class Config {
 
         void            setTimeStart(const String&);    //iso format
         const String&   getTimeStart(void);
+        const DateTime& getTimeStartDT(void);
         void            setTimeEnd(const String&);      //iso format
         const String&   getTimeEnd(void);
+        const DateTime& getTimeEndDT(void);
 
         void            setMsgStart(const String&);    //iso format
         const String&   getMsgStart(void);
@@ -49,7 +52,9 @@ class Config {
 
         // time string must be nn iso format (20 chars "2023-12-29T15:45:00")
         String          _timeStart;     // if we are counting up, this t=0 (in the past)
+        DateTime        _timeStartDT;
         String          _timeEnd;     // if we are counintg down, this is t=0 (in the future)
+        DateTime        _timeEndDT;
         
         // msg display, must be <= 12 chars
         String          _msgStart;      // msg to say at bootup.   

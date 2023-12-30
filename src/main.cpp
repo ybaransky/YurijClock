@@ -36,18 +36,15 @@ struct TickType {
 };
 
 WebServer* initWebServer(void) {
-  extern  void  handleRoot(void);
-  extern  void  handleClockMode(void);
+  extern  void  handleHome(void);
 
-  extern  void  handleClockSetup(void);
-  extern  void  handleConfigSave(void);
+  extern  void  handleClock(void);
+
   extern  void  handleConfigView(void);
   extern  void  handleConfigDelete(void);
 
-  extern  void  handleSyncSetup(void);
-  extern  void  handleSyncSave(void);
-
-  extern  void  handleWifiSetup(void);
+  extern  void  handleSync(void);
+  extern  void  handleWifi(void);
 
   extern  void  handleReboot(void);
 
@@ -60,18 +57,15 @@ WebServer* initWebServer(void) {
     PL("Access point failed!");
   }
  
-  server->on("/",        handleRoot);
-  server->on("/mode",    handleClockMode);
+  server->on("/",        handleHome);
 
-  server->on("/setup",   handleClockSetup);
-  server->on("/save",    handleConfigSave);
+  server->on("/clock",   handleClock);
   server->on("/view",    handleConfigView);
   server->on("/delete",  handleConfigDelete);
 
-  server->on("/sync",     handleSyncSetup);
-  server->on("/syncsave", handleSyncSave);
+  server->on("/sync",     handleSync);
+  server->on("/wifi",     handleWifi);
 
-  server->on("/wifi",     handleWifiSetup);
   server->on("/reboot",   handleReboot);
   server->begin();
   PL("Webserver started")
@@ -146,6 +140,11 @@ void setup() {
   action.info(message, 2000); 
 
   server = initWebServer();
+  PVL(config->getTimeEnd());
+  PVL(config->getTimeEndDT().timestamp());
+
+  PVL(config->getTimeStart());
+  PVL(config->getTimeStartDT().timestamp());
 }
 
 /*
@@ -161,6 +160,7 @@ void loop() {
   TickType tickType;
   static TimeSpan ts;
   static DateTime rtc;
+  static uint32_t freeHeap = ESP.getFreeHeap();
 
   server->handleClient();
   button->tick();
@@ -175,8 +175,11 @@ void loop() {
     timer100ms.reset();   // reset 1/10 second timer on a full second tick
 
     if (rtc.second()%5==0) {
-      P(rtc.timestamp()); P(" mode="); P(modeNames[config->getMode()]); SPACE
-      P("addr="); P(WiFi.softAPIP()); P(" clients=");P(WiFi.softAPgetStationNum());
+      P(rtc.timestamp()); 
+      P(" mode="); P(modeNames[config->getMode()]);
+      P(" addr="); P(WiFi.softAPIP()); 
+      P(" heap="); P(ESP.getFreeHeap());P("(");P(long(ESP.getFreeHeap()) - long(freeHeap));P(")");
+      P(" clients=");P(WiFi.softAPgetStationNum());
       PL("");
     }
 
@@ -242,14 +245,14 @@ void loop() {
     DateTime expireTime;
     switch (config->getMode()) {
       case MODE_COUNTDOWN :
-        expireTime = DateTime(config->getTimeEnd().c_str());
+        expireTime = config->getTimeEndDT();
         ts = TimeSpan(expireTime.unixtime() - rtc.unixtime());
         display->showCount(ts, count ? 10-count : count);
         if (expireTime <= rtc)
           config->setMode(MODE_TEXT);
         break;
       case MODE_COUNTUP :
-        ts = TimeSpan(rtc.unixtime() - DateTime(config->getTimeStart().c_str()).unixtime());
+        ts = TimeSpan(rtc.unixtime() - config->getTimeStartDT().unixtime());
         display->showCount(ts, count);
         break;
       case MODE_CLOCK:
