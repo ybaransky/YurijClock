@@ -15,10 +15,10 @@ const static String cfgFileName("/countdown.json");
 #define DEFAULT_TIME_START  "2023-12-22T14:45"    // no seconds
 #define DEFAULT_TIME_END    "2024-07-28T15:45"
 
-#define DEFAULT_MESSAGE_START "AlexCloc"
+#define DEFAULT_MESSAGE_START "YuriCloc"
 #define DEFAULT_MESSAGE_END   "Good Luc"
 
-#define DEFAULT_AP_SSID       "AlexClock"
+#define DEFAULT_AP_SSID       "YuriClock"
 #define DEFAULT_AP_PASSWORD   "12345678"
 
 #define DEFAULT_MODE          MODE_COUNTDOWN
@@ -36,20 +36,20 @@ Config* initConfig(void) {
     return cfg;
 }
 
-void    Config::init(void) {
+void Config::init(void) {
   setTimeStart(DEFAULT_TIME_START);
   setTimeEnd(DEFAULT_TIME_END);
 
-  _msgStart   = DEFAULT_MESSAGE_START;
-  _msgEnd     = DEFAULT_MESSAGE_END;
+  setMsgStart(DEFAULT_MESSAGE_START);
+  setMsgEnd(DEFAULT_MESSAGE_END);
 
-  _apSSID     = DEFAULT_AP_SSID;
-  _apPassword = DEFAULT_AP_PASSWORD;
+  setSSID(DEFAULT_AP_SSID);
+  setPassword(DEFAULT_AP_PASSWORD);
 
   _mode       = DEFAULT_MODE;
   memset(_formats,DEFAULT_FORMAT,sizeof(_formats));
 
-  _brightness = DEFAULT_BRIGHTNESS;
+  setBrightness(DEFAULT_BRIGHTNESS);
 }
 
 const String& Config::getFileName(void) const { return cfgFileName;}
@@ -169,29 +169,26 @@ void Config::printJson() const {
 void Config::saveToJson(JsonDocument& doc) const {
   // Set the values in the document
 
-  doc["mode"]     = _mode;
+  doc["brightness"] = _brightness;
+  doc["mode"]       = _mode;
   JsonArray formats = doc.createNestedArray("formats");
   for (int i=0;i < N_MODES; i++) {
     formats.add(_formats[i]);
   }
-  JsonObject msgs = doc.createNestedObject("msgs");
-  msgs["start"] = _msgStart.c_str();
-  msgs["end"]   = _msgEnd.c_str();
+  doc["msgStart"]  = _msgStart.c_str();
+  doc["msgEnd"]    = _msgEnd.c_str();
 
-  JsonObject times = doc.createNestedObject("times");
-  times["start"] = _timeStart.c_str();
-  times["end"]   = _timeEnd.c_str();
+  doc["timeStart"] = _timeStart.c_str();
+  doc["timeEnd"]   = _timeEnd.c_str();
 
-  JsonObject network = doc.createNestedObject("network");
-  network["ssid"]     = _apSSID.c_str();
-  network["password"] = _apPassword.c_str();
-  /*
+  doc["ssid"]      = _apSSID.c_str();
+  doc["password"]  = _apPassword.c_str();
+
   P("Json memory usage: "); 
   PV(doc.memoryUsage()); SPACE;
   PV(doc.capacity()); SPACE;
   PV(doc.overflowed()); SPACE;
   PL("");
-  */
 }
 
 // Saves the configuration to a file
@@ -239,28 +236,55 @@ void Config::saveFile(void) const {
 }
 void Config::loadFromJson(const JsonDocument& doc) {
   char buffer[32];
+
   // Set the values in the document
-  _mode = doc["mode"];
+  _brightness = doc["brightness"] | DEFAULT_BRIGHTNESS;
+  _mode       = doc["mode"] | DEFAULT_MODE;
 
   for (int i=0;i < N_MODES; i++) {
     _formats[i] = doc["formats"][i];
   }
-  strlcpy(buffer, doc["msgs"]["start"] | _msgStart.c_str(), CHARS_PER_MESSAGE+1); 
-  _msgStart = buffer;
-  strlcpy(buffer, doc["msgs"]["end"] | _msgEnd.c_str(), CHARS_PER_MESSAGE+1); 
-  _msgEnd = buffer;
 
-  strlcpy(buffer, doc["time"]["start"] | _timeStart.c_str(), ISOTIME_SIZE+1); 
-  setTimeStart(buffer);
-  strlcpy(buffer, doc["time"]["end"] | _timeEnd.c_str(), ISOTIME_SIZE+1); 
-  setTimeEnd(buffer);
+  strlcpy(buffer, doc["msgStart"] | _msgStart.c_str(), CHARS_PER_MESSAGE+1); setMsgStart(buffer);
+  strlcpy(buffer, doc["msgSend"]  | _msgEnd.c_str(), CHARS_PER_MESSAGE+1);   setMsgEnd(buffer);
+
+  strlcpy(buffer, doc["timeStart"] | _timeStart.c_str(), ISOTIME_SIZE+1); setTimeStart(buffer);
+  strlcpy(buffer, doc["timeEnd"]   | _timeEnd.c_str(), ISOTIME_SIZE+1);   setTimeEnd(buffer);
   
-  strlcpy(buffer, doc["network"]["ssid"] | _apSSID.c_str(), SSID_SIZE+1); 
-  _apSSID = buffer;
-  strlcpy(buffer, doc["network"]["password"] | _apPassword.c_str(), SSID_SIZE+1); 
-  _apPassword = buffer;
+  strlcpy(buffer, doc["ssid"]     | _apSSID.c_str(), SSID_SIZE+1);     setSSID(buffer);
+  strlcpy(buffer, doc["password"] | _apPassword.c_str(), SSID_SIZE+1); setPassword(buffer);
 }
 
+// Loads the configuration from a file
+bool Config::loadFile(String& jsonStr) {
+  // Open file for reading
+  const char* filename = getFileName().c_str();
+  if (!FILESYSTEM.exists(filename)) {
+    P("loadFile: ERROR: file ");P(filename);PL(" not found");
+    return false;
+  }
+  File file = FILESYSTEM.open(filename, FILE_READ);
+  if (!file) {
+    Serial.println(F("loadFile: Failed to open file ")); PL(filename);
+    return false;
+  }
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use https://arduinojson.org/v6/assistant to compute the capacity.
+  StaticJsonDocument<JSON_DOC_SIZE> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, file);
+  if (error) 
+    Serial.println(F("Failed to read file, using default configuration"));
+
+  serializeJsonPretty(doc,jsonStr); PL("");
+
+  // Close the file (Curiously, File's destructor doesn't close the file)
+  file.close();
+  return true;
+}
 // Loads the configuration from a file
 bool Config::loadFile(void) {
   // Open file for reading

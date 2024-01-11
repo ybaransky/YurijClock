@@ -1,8 +1,4 @@
 #include <Arduino.h>
-#include <ESP8266Wifi.h>
-#include <ESP8266WebServer.h>
-#include <FS.h>
-
 #include "Constants.h"
 #include "Config.h"
 #include "Display.h"
@@ -152,7 +148,7 @@ static String getFileMsg(const String& msg) {
   page += R"(
     <body>
     <div style='text-align:center; min-width:260px;'>
-    <h3 style='text-align:center; font-weight:bold'>
+    <h3 style='text-align:left; font-weight:bold'>
     )";
   page += msg;
   page += R"(</h3>
@@ -270,6 +266,46 @@ static void handleClockSave(void) {
   P(fcn); P(" changed=");PL(changed);
 }
 
+static void handleMsgsSave(void) {
+  const char* fcn="handleMsgsSave:";
+  int changed = 0;
+  bool guiUpdate = false;  
+  String row;
+    
+  for(int i=0; i<server->args();i++) {
+    row = server->argName(i) + "=|" + server->arg(i) + "| <br>";
+    P(i); P(") "); PL(row);
+
+    if (server->arg(i).length()) {
+      if (server->argName(i) == idMsgStart) {
+        if (config->getMsgStart() != server->arg(i)) {
+          config->setMsgStart(server->arg(i));
+          changed++;
+          guiUpdate = true;
+        }
+      }
+      else if (server->argName(i) == idMsgEnd) {
+        if (config->getMsgEnd() != server->arg(i)) {
+          config->setMsgEnd(server->arg(i));
+          changed++;
+          guiUpdate = true;
+        }
+      }
+    }
+  }
+ 
+  if (guiUpdate) {
+    display->refresh(fcn); 
+  }
+
+  if (changed>0) {
+    PL("should save config");
+  //   config->saveFile();
+  }
+  P(fcn); P(" changed=");PL(changed);
+}
+
+
 static void handleSyncSave(void) {
   const char* fcn = "handleSyncSave:";
   PL(fcn);
@@ -368,14 +404,84 @@ void handleHome(void) {
   page += R"(
   </form>
   <br><br><br><br><br><br>
-  <a href='/clock'  align=center><b>Clock Setup</b></a><p>
-  <a href='/wifi'   align=center><b>Wifi Setup</b></a><p>
-  <a href='/view'   align=center><b>View Config File</b></a><p>
-  <a href='/delete' align=center><b>Delete Config File</b></a><p>
+  <table width='95%' align='center' cellspacing='10' cellpadding='10'>
+  <tr>
+    <td class='noborder'> <a href='/clock'>Clock Setup</a></td>
+    <td class='noborder'> <a href='/msgs'>Message Setup</a></td>
+  </tr>
+  <tr>
+    <td class='noborder'> <a href='/view'>Config View</a></td>
+    <td class='noborder'> <a href='/delete'>Config Reset</a></td>
+  </tr>
+  <tr>
+    <td class='noborder'> <a href='/wifi'>Wifi Setup</a></td>
+  </tr>
+  </table>
   )";
   pageInfo(fcn, page, start);
   server->send(200, "text/html", page);
 }
+
+  #ifdef YURIJ
+  <td class='noborder'> <a href='/delete'>Delete Config</a></td>
+  <col width='50%'><col width='50%'>
+  <a href='/clock'  align=center><b>Clock Setup</b></a><p>
+  <a href='/wifi'   align=center><b>Wifi Setup</b></a><p>
+  <a href='/view'   align=center><b>View Config File</b></a><p>
+  <a href='/delete' align=center><b>Delete Config File</b></a><p>
+  #endif
+
+void handleMsgs(void) {
+  const char* fcn="handleMsgs";
+  PL(fcn);
+  if (server->arg("btnMsgs").equals("save")) {
+    handleMsgsSave();
+  } 
+
+  ulong start = millis();
+  String field;
+
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>Messages Setup</h3><hr>
+  <form method='GET'>
+  )";
+
+/*********************************************************************
+ * Start/Stop Messages
+ ********************************************************************/
+  page += TABLE;
+  page += R"(
+  <caption>Start/Final Message</caption>
+  <col width='50%'><col width='50%'>
+  )";
+  field = inputFieldText(idMsgStart, config->getMsgStart(), 13);
+  page += addInputRow("Start (0-12)", field);
+  field = inputFieldText(idMsgEnd, config->getMsgEnd(), 13);
+  page += addInputRow("Final (0-12)", field);
+  page += R"(</table><br>)";
+
+/*********************************************************************
+ * Form Buttons
+ ********************************************************************/
+page += R"(
+  <p>
+  <button type='submit' name='btnMsgs' value='save'>Save</button> 
+  <button type='submit' name='btnMsgs' value='test'>Test</button>
+  <p>
+  <button type='submit' name='btnMsgs' value='home' formaction='/'>Home</button>
+  </form> 
+  </body> 
+</html>)";
+
+  pageInfo(fcn, page, start);
+  server->send(200, "text/html", page);
+  return;
+}
+
 
 void handleWifi(void) {
   const char* fcn="handleWifi";
@@ -414,7 +520,7 @@ void handleWifi(void) {
   <button type='submit' name='btnWifi' value='savewifi'>Save</button>
   <button type='submit' name='btnWifi' value='reboot'>Reboot</button>
   <p><p>
-  <button type='submit' name='btnWifi' value='home' formation='/'>Home</button>
+  <button type='submit' name='btnWifi' value='home' formaction='/'>Home</button>
   </form> 
   </body>
 </html>
@@ -497,6 +603,8 @@ void handleClock(void) {
     </table><br>
 
  )";
+
+ #ifdef YURIJ
 /*********************************************************************
  * Start/Stop Messages
  ********************************************************************/
@@ -512,6 +620,7 @@ void handleClock(void) {
   page += addInputRow("Final (0-12)", field);
   page += R"(</table><br>
   )";
+  #endif
 
 /*********************************************************************
  * Brightness  
@@ -547,22 +656,20 @@ page += R"(
 }
 
 void  handleConfigView(void) {
+  ulong start = millis();
+  const char* fcn = "handleConvigView:";
+  String msg;
   String filename(config->getFileName());
-  PVL(filename);
   if (FILESYSTEM.exists(filename)) {
-    String  context = "text/json";
-    File file = FILESYSTEM.open(filename, "r");
-    size_t sent = server->streamFile(file, "text/json");
-    P("filesize="); PL(sent);
-    file.close();
+    String json;
+    config->loadFile(json);
+    msg = "<pre>" + json + "</pre>";
   } else {
-    const char* fcn = "handleConvigView:";
-    ulong start = millis();
     String msg = "File " + quote(filename) + " not found";
-    String page = getFileMsg(msg);
-    pageInfo(fcn,page,start);
-    server->send(200, "text/html", page);
   }
+  String page = getFileMsg(msg);
+  pageInfo(fcn,page,start);
+  server->send(200, "text/html", page);
   return;
 }
 
@@ -572,6 +679,7 @@ void  handleConfigDelete(void) {
   if (FILESYSTEM.exists(filename)) {
     FILESYSTEM.remove(filename);
     msg += " removed";
+//    config->saveFile();
   } else {
     msg += " not found!";
   }

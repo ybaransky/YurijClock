@@ -8,9 +8,9 @@ class Action {
       NONE, INFO, DEMO, FINAL
     };
     Action() : _active(false) {}
-    void      demo(const String& msg);
-    void      info(const String& msg, ulong duration);
-    void      start(Type id, const String& msg, ulong duration, bool blinking=false);
+    void      startDemo(void);
+    void      startInfo(const String& msg, ulong seconds);
+    void      start(Type id, const String& msg, ulong seconds, bool blinking=false);
 
     void      stop(void);
     void      tick(void);
@@ -18,7 +18,7 @@ class Action {
     bool      active(void) { return _active;}
     void      print(const char* msg=nullptr);
 
-    void            setPrevDisplay(void);
+    void            restore(void);
     const String&   getMsg(void) { return _msg;}
     bool            isBlinking(void) { return _blinking;}
     bool            isDemoMode(void) { return _type == Type::DEMO;}

@@ -41,7 +41,8 @@ class Config {
 
         const String&   getFileName() const;
         void            saveFile(void) const;
-        bool            loadFile(void);
+        bool            loadFile(void);         // loads file contents into config
+        bool            loadFile(String& json); // loads file contents into string, not config
 
         void            print(void) const;
         void            printJson(void) const;

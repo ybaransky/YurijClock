@@ -1,6 +1,4 @@
 #include <Arduino.h>
-#include <ESP8266Wifi.h>
-#include <ESP8266WebServer.h>
 #include <TaskScheduler.h>
 #include "Action.h"
 #include "Button.h"
@@ -37,18 +35,15 @@ struct TickType {
 
 WebServer* initWebServer(void) {
   extern  void  handleHome(void);
-
   extern  void  handleClock(void);
-
+  extern  void  handleMsgs(void);
   extern  void  handleConfigView(void);
   extern  void  handleConfigDelete(void);
-
   extern  void  handleSync(void);
   extern  void  handleWifi(void);
-
   extern  void  handleReboot(void);
 
-  WebServer* server = new ESP8266WebServer(80); 
+  WebServer* server = new WebServer(80); 
   
   P("access point: ssid="); P(config->_apSSID); P(" password=|"); P(config->_apPassword);PL("|");
   if (WiFi.softAP(config->_apSSID, config->_apPassword)) {
@@ -60,6 +55,7 @@ WebServer* initWebServer(void) {
   server->on("/",        handleHome);
 
   server->on("/clock",   handleClock);
+  server->on("/msgs",    handleMsgs);
   server->on("/view",    handleConfigView);
   server->on("/delete",  handleConfigDelete);
 
@@ -130,14 +126,14 @@ void setup() {
 
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
-  config->print();
+  config->printJson();
   //display->test();
 
   // start the timer for the startup message
   // and then drop into the saved mode
   timer100ms.start(100);
   timer500ms.start(500);
-  action.info(message, 2000); 
+  action.startInfo(message, 2); 
 
   server = initWebServer();
   PVL(config->getTimeEnd());
@@ -154,7 +150,7 @@ void setup() {
 */
 
 void loop() {
-  const char* fcn="mainloop";
+  static const char* fcn="mainloop";
   bool updateDisplay = false;
   bool visible;
   TickType tickType;
@@ -162,7 +158,11 @@ void loop() {
   static DateTime rtc;
   static uint32_t freeHeap = ESP.getFreeHeap();
 
+  #ifdef USE_ASYNC_WEBSERVER
+  // do nothing
+  #else
   server->handleClient();
+  #endif
   button->tick();
   scheduler->execute();
 
@@ -186,7 +186,7 @@ void loop() {
     // start this on a second boundary
     if (EVENT_DEMO_START) {
       EVENT_DEMO_START=false;
-      action.demo(config->getMsgEnd());
+      action.startDemo();
       timer500ms.reset();
     }
   }
@@ -208,7 +208,7 @@ void loop() {
     action.tick();
     if (action.expired()) {
       action.stop();
-      action.setPrevDisplay();
+      action.restore();
       display->refresh(fcn);
     }
   }
@@ -216,7 +216,7 @@ void loop() {
   if (BUTTON_SINGLE_CLICK) {
     BUTTON_SINGLE_CLICK = false;
     PL("single button click ");
-    action.info(WiFi.softAPIP().toString(),10000);
+    action.startInfo(WiFi.softAPIP().toString(),10000);
     action.print("***** starting action: ");
     display->refresh(fcn);
     timer500ms.reset();
@@ -225,9 +225,8 @@ void loop() {
   if (BUTTON_DOUBLE_CLICK) {
     BUTTON_DOUBLE_CLICK = false;
     PL("double button click");
-    action.demo(config->getMsgEnd());
-    display->refresh(fcn);
-    timer500ms.reset();
+    if (!action.isDemoMode())
+      EVENT_DEMO_START = true;
   }
 
   if (BUTTON_LONG_CLICK) {
@@ -272,8 +271,11 @@ void loop() {
       case MODE_DEMO:
         // this has the countdown part and the text part
         if (action.getSecsRemaining()>=0) {
+          if (true) {
+            P(millis()); P(" sec="); P(rtc.second()); P(" sec rem=");P(action.getSecsRemaining()); P("  count=");PL(count);
+          }
           ts = TimeSpan(action.getSecsRemaining());
-          display->showCount(ts, count ? 10-count : count);
+          display->showCount(ts, count ? 10 - count : count);
         } else {
           message = action.getMsg();
           visible = action.isBlinking() ? timer500ms.count()%2 : true;
@@ -285,6 +287,7 @@ void loop() {
     }
   }
 }
+
 void  reboot(void) {
 //  delay(2000);
   PL("about to reboot")

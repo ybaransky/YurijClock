@@ -1,6 +1,4 @@
 #pragma once
-#include <ESP8266Wifi.h>
-#include <ESP8266WebServer.h>
 
 #define USE_LITTLEFS
 #ifdef USE_LITTLEFS
@@ -11,8 +9,17 @@
 #include <FS.h>>
 #endif
 
-
+//#define USE_ASYNC_WEBSERVER
+#ifdef USE_ASYNC_WEBSERVER
+#include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+typedef AsyncWebServer WebServer;
+#else 
+#include <ESP8266Wifi.h>
+#include <ESP8266WebServer.h>
 typedef ESP8266WebServer WebServer;
+#endif
 
 
 enum  {

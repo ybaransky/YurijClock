@@ -1,24 +1,24 @@
 #include "Action.h"
 #include "Config.h"
 
-void  Action::info(const String& msg, ulong duration) {
-  start(Action::INFO, msg, duration, false);  // 5 seconds for info
+void  Action::startInfo(const String& msg, ulong seconds) {
+  start(Action::INFO, msg, seconds, false);  // 5 seconds for info
   config->setMode(MODE_TEXT);
 }
 
-void  Action::demo(const String& msg) {
-  start(Action::DEMO, msg, 10000, true); 
+void  Action::startDemo(void) {
+  start(Action::DEMO, config->getMsgEnd(), 10, true); 
   _zeroTime = _start + 5000; // 5 seconds for coundown, 5 for blinking
   config->setMode(MODE_DEMO);
   config->setFormat(0);
 }
 
-void  Action::start(Type type, const String& msg, ulong duration, bool blinking) {
+void  Action::start(Type type, const String& msg, ulong seconds, bool blinking) {
   _start    = millis();
   _prevMode   = config->getMode();
   _prevFormat = config->getFormat();
   _msg      = msg; 
-  _duration = duration;
+  _duration = seconds * 1000;
   _active   = true;
   _type     = type;
   _blinking = blinking;
@@ -37,7 +37,9 @@ void  Action::stop(void) {
   _type = Type::NONE;
 }
 
-void  Action::tick(void) {_now = millis();}
+void  Action::tick(void) {
+  _now = millis();
+}
 
 bool  Action::expired(void) {
   if (_active) {
@@ -47,11 +49,10 @@ bool  Action::expired(void) {
 }
 
 int Action::getSecsRemaining(void) { 
-  return long(_zeroTime/1000) - long(_now/1000);
   return (_zeroTime > _now) ? (_zeroTime - _now)/1000 : -1;
 }
 
-void  Action::setPrevDisplay(void) {
+void  Action::restore(void) {
   config->setMode(_prevMode);
   config->setFormat(_prevFormat);
 }
