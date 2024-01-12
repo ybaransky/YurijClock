@@ -415,6 +415,7 @@ void handleHome(void) {
   </tr>
   <tr>
     <td class='noborder'> <a href='/wifi'>Wifi Setup</a></td>
+    <td class='noborder'> <a href='/sync'>Sync Time</a></td>
   </tr>
   </table>
   )";
@@ -643,12 +644,12 @@ void handleClock(void) {
 page += R"(
   <p>
   <button type='submit' name='btnClock' value='save'>Save</button> 
-  <button type='submit' name='btnClock' value='sync' formaction='/sync'>Sync Time</button>
   <p>
   <button type='submit' name='btnClock' value='home' formaction='/'>Home</button>
   </form> 
   </body> 
 </html>)";
+  //<button type='submit' name='btnClock' value='sync' formaction='/sync'>Sync Time</button>
 
   pageInfo(fcn, page, start);
   server->send(200, "text/html", page);
