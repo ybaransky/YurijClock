@@ -12,13 +12,13 @@
 #define COMMON_CLK   1
 #ifdef COMMON_CLK
     #define TM1637_CLK_0    D3
-    #define TM1637_DIO_0    D4
+    #define TM1637_DIO_0    D6
 
-    #define TM1637_CLK_1    D3  // D5
-    #define TM1637_DIO_1    D6
+    #define TM1637_CLK_1    D3 
+    #define TM1637_DIO_1    D5
 
-    #define TM1637_CLK_2    D3  // RX
-    #define TM1637_DIO_2    D6  // TX
+    #define TM1637_CLK_2    D3 
+    #define TM1637_DIO_2    D4 
 #else
     #define TM1637_CLK_0    D3
     #define TM1637_DIO_0    D4

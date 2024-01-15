@@ -9,22 +9,24 @@ extern RTClock    *rtClock;
 extern Config     *config;
 extern WebServer  *server;
 
+static  bool bFromWifiPage = false;
+
 static  const String     NL("\r\n");
 static  const String     EMPTY("");
 static  const String     BLANK(" ");
 static  const String     QUOTE("'");
 static  const String     TABLE = "<table width='95%' align='center'>";
 
-static  const String     idMsgStart("msgStart");
-static  const String     idMsgEnd("msgEnd");
-static  const String     idCDFormat("cdFormat");
-static  const String     idCUFormat("cuFormat");
-static  const String     idCLFormat("clFormat");
-static  const String     idTimeEnd("timeEnd");
-static  const String     idTimeStart("timeStart");
-static  const String     idSSID("ssid");
-static  const String     idPassword("password");
-static  const String     idSyncTime("syncTime");
+static  const char*      idMsgStart="msgStart";
+static  const char*      idMsgEnd="msgEnd";
+static  const char*      idCDFormat="cdFmt";
+static  const char*      idCUFormat="cuFmt";
+static  const char*      idCLFormat="clFmt";
+static  const char*      idTimeEnd="timeEnd";
+static  const char*      idTimeStart="timeStart";
+static  const char*      idSSID="ssid";
+static  const char*      idPassword="password";
+static  const char*      idSyncTime="syncTime";
 static  const String     idCDBtn("cdBtn");
 static  const String     idCUBtn("cuBtn");
 static  const String     idCLBtn("clBtn");
@@ -206,19 +208,7 @@ static void handleClockSave(void) {
     P(i); P(") "); PL(row);
 
     if (server->arg(i).length()) {
-      if (server->argName(i) == idMsgStart) {
-        if (config->getMsgStart() != server->arg(i)) {
-          config->setMsgStart(server->arg(i));
-          changed++;
-        }
-      }
-      else if (server->argName(i) == idMsgEnd) {
-        if (config->getMsgEnd() != server->arg(i)) {
-          config->setMsgEnd(server->arg(i));
-          changed++;
-        }
-      }
-      else if (server->argName(i) == idCDFormat) {
+      if (server->argName(i) == idCDFormat) {
         if (changedFormat(MODE_COUNTDOWN,idCDFormat,server->arg(i).toInt(),changed)) {
           guiUpdate = true;
         }
@@ -259,9 +249,8 @@ static void handleClockSave(void) {
     display->refresh(fcn); 
   }
 
-  if (changed>0) {
-    PL("should save config");
-  //   config->saveFile();
+  if (changed) {
+    config->saveFile(fcn);
   }
   P(fcn); P(" changed=");PL(changed);
 }
@@ -269,11 +258,15 @@ static void handleClockSave(void) {
 static void handleMsgsSave(void) {
   const char* fcn="handleMsgsSave:";
   int changed = 0;
-  bool guiUpdate = false;  
-  String row;
+
+  if (server->arg("btnMsgs").equals("test")) {
+    extern bool EVENT_INFO_START;
+    EVENT_INFO_START = true;
+    P(fcn);PL("setting EVENT_INFO_START to true");
+  }
     
   for(int i=0; i<server->args();i++) {
-    row = server->argName(i) + "=|" + server->arg(i) + "| <br>";
+    String row = server->argName(i) + "=|" + server->arg(i) + "| <br>";
     P(i); P(") "); PL(row);
 
     if (server->arg(i).length()) {
@@ -281,27 +274,21 @@ static void handleMsgsSave(void) {
         if (config->getMsgStart() != server->arg(i)) {
           config->setMsgStart(server->arg(i));
           changed++;
-          guiUpdate = true;
         }
       }
       else if (server->argName(i) == idMsgEnd) {
         if (config->getMsgEnd() != server->arg(i)) {
           config->setMsgEnd(server->arg(i));
           changed++;
-          guiUpdate = true;
         }
       }
     }
   }
  
-  if (guiUpdate) {
-    display->refresh(fcn); 
+  if (changed) {
+    config->saveFile(fcn);
   }
 
-  if (changed>0) {
-    PL("should save config");
-  //   config->saveFile();
-  }
   P(fcn); P(" changed=");PL(changed);
 }
 
@@ -325,32 +312,29 @@ static void handleWifiSave(void) {
   const char *fcn = "handleWifiSave:";
   PL(fcn);
 
-  bool reboot = false;
-  if (server->arg("btnWifi").equals("reboot")) {
-    reboot = true;
-  } else {
-    String row;
-    for(int i=0; i<server->args();i++) {
-      row = server->argName(i) + "=|" + server->arg(i) + "| <br>";
+  bool changed = false;
+
+  for(int i=0; i<server->args();i++) {
+    if (server->arg(i).length()) {
+      String row = server->argName(i) + "=|" + server->arg(i) + "|";
       P(i); P(") "); PL(row);
       if (server->argName(i) == idSSID) {
         if (config->getSSID() != server->arg(i)) {
           config->setSSID(server->arg(i));
-          reboot = true;
+          changed = true;
         }
       } else if (server->argName(i) == idPassword)  {
         if (config->getPassword() != server->arg(i)) {
           config->setPassword(server->arg(i));
-          reboot = true;
+          changed = true;
         }
       }
     }
   }
 
-  if (reboot) {
-    PL("should  save config and reboot")
-    extern void reboot(void);
-  } 
+  if (changed) {
+    config->saveFile(fcn);
+  }
 }
 
 static void handleHomeSave(void) {
@@ -375,14 +359,18 @@ static void handleHomeSave(void) {
 }
 
 void handleHome(void) {
-  const char* fcn = "handleHome";
+  const char* fcn = "handleHome:";
+  bool forceReboot = false;
   PL(fcn);
   if (server->arg("btnHome").equals(idCDBtn) || 
       server->arg("btnHome").equals(idCUBtn) ||
       server->arg("btnHome").equals(idCLBtn) || 
       server->arg("btnHome").equals(idDemoBtn)) {
     handleHomeSave();
-  }
+  } else if (server->arg("btnWifi").equals("reboot")) {
+    forceReboot = bFromWifiPage;
+  } 
+  bFromWifiPage = false;
 
   ulong start = millis();
   String page = R"(<!DOCTYPE html>)";
@@ -421,21 +409,22 @@ void handleHome(void) {
   )";
   pageInfo(fcn, page, start);
   server->send(200, "text/html", page);
-}
 
-  #ifdef YURIJ
-  <td class='noborder'> <a href='/delete'>Delete Config</a></td>
-  <col width='50%'><col width='50%'>
-  <a href='/clock'  align=center><b>Clock Setup</b></a><p>
-  <a href='/wifi'   align=center><b>Wifi Setup</b></a><p>
-  <a href='/view'   align=center><b>View Config File</b></a><p>
-  <a href='/delete' align=center><b>Delete Config File</b></a><p>
-  #endif
+  // we jump to the homer page before we reboot to prevent
+  // a loop of reconnecting and then rebooting. 
+  // we come here from the handleWifi page
+  if (forceReboot) {
+    extern void reboot(const char*);
+    handleWifiSave(); // mak sure we have the settings
+    reboot(fcn);
+  }
+}
 
 void handleMsgs(void) {
   const char* fcn="handleMsgs";
   PL(fcn);
-  if (server->arg("btnMsgs").equals("save")) {
+  if (server->arg("btnMsgs").equals("save") || 
+      server->arg("btnMsgs").equals("test") ) {
     handleMsgsSave();
   } 
 
@@ -487,10 +476,10 @@ page += R"(
 void handleWifi(void) {
   const char* fcn="handleWifi";
   PL(fcn);
-  if (server->arg("btnWiFi").equals("savewifi") ||
-      server->arg("btnWifi").equals("reboot")) {
+  if (server->arg("btnWifi").equals("savewifi")) {
     handleWifiSave();
   }
+  bFromWifiPage = true; // to handle the refresh issue
 
   ulong start = millis();
 
@@ -519,7 +508,7 @@ void handleWifi(void) {
 
   <p>
   <button type='submit' name='btnWifi' value='savewifi'>Save</button>
-  <button type='submit' name='btnWifi' value='reboot'>Reboot</button>
+  <button type='submit' name='btnWifi' value='reboot' formaction='/'>Reboot</button>
   <p><p>
   <button type='submit' name='btnWifi' value='home' formaction='/'>Home</button>
   </form> 
@@ -532,7 +521,7 @@ void handleWifi(void) {
 }
 
 void handleClock(void) {
-  const char* fcn="handleClock";
+  const char* fcn="handleClock:";
   PL(fcn);
   if (server->arg("btnClock").equals("save")) {
     handleClockSave();
@@ -605,24 +594,6 @@ void handleClock(void) {
 
  )";
 
- #ifdef YURIJ
-/*********************************************************************
- * Start/Stop Messages
- ********************************************************************/
-  page += TABLE;
-  page += R"(
-  <caption>Start/Final Message</caption>
-  <col width='50%'><col width='50%'>
-  )";
-  //<tr><th>Message</th><th>Text</th></tr>
-  field = inputFieldText(idMsgStart, config->getMsgStart(), 13);
-  page += addInputRow("Start (0-12)", field);
-  field = inputFieldText(idMsgEnd, config->getMsgEnd(), 13);
-  page += addInputRow("Final (0-12)", field);
-  page += R"(</table><br>
-  )";
-  #endif
-
 /*********************************************************************
  * Brightness  
  ********************************************************************/
@@ -680,7 +651,6 @@ void  handleConfigDelete(void) {
   if (FILESYSTEM.exists(filename)) {
     FILESYSTEM.remove(filename);
     msg += " removed";
-//    config->saveFile();
   } else {
     msg += " not found!";
   }
@@ -689,6 +659,7 @@ void  handleConfigDelete(void) {
 }
 
 void  handleReboot(void) {
+  const char *fcn = "handleReboot:";
   String page = "";
   page += "<!doctype html>"    + NL;;
   page +=   "<html lang='en'>" + NL;;
@@ -700,9 +671,8 @@ void  handleReboot(void) {
 //  page += "<form method='get' action='/'><button type='submit'>Home</button></form>";
   page += "</div></body></html>";
   server->send(200, "text/html", page); 
-  extern  void  reboot(void);
-  delay(2000);
-  reboot();
+  extern  void  reboot(const char*);
+  reboot(fcn);
   return;
 }
 

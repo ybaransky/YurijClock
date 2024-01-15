@@ -27,12 +27,14 @@ void  Action::start(Type type, const String& msg, ulong seconds, bool blinking) 
 
 void  Action::print(const char* msg) {
   if (msg) {P(msg); SPACE;}
-  PV(_type); SPACE; PV(_msg); SPACE; PV(_duration); SPACE; PV(_prevMode); SPACE;
+  PV(_type); SPACE; PV(_msg); SPACE; PV(_duration); P("ms "); PV(_prevMode); SPACE;
   PV(_active); SPACE; PV(_blinking);  
   PL("");
 }
 
-void  Action::stop(void) {
+void  Action::stop(const char* msg) {
+  if (msg) {P(msg); SPACE;}
+  PL("action stopping");
   _active = false;
   _type = Type::NONE;
 }

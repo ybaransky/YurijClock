@@ -34,13 +34,13 @@ class Config {
         uint8_t         getBrightness(void);
         void            setBrightness(uint8_t);
 
-        void            setSSID(const String&);
+        void            setSSID(const String&, const char* fcn=nullptr);
         const String&   getSSID(void);
-        void            setPassword(const String&);
+        void            setPassword(const String&, const char* fcn=nullptr);
         const String&   getPassword(void);
 
         const String&   getFileName() const;
-        void            saveFile(void) const;
+        void            saveFile(const char* fcn=nullptr) const;
         bool            loadFile(void);         // loads file contents into config
         bool            loadFile(String& json); // loads file contents into string, not config
 

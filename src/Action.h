@@ -12,7 +12,7 @@ class Action {
     void      startInfo(const String& msg, ulong seconds);
     void      start(Type id, const String& msg, ulong seconds, bool blinking=false);
 
-    void      stop(void);
+    void      stop(const char* msg=nullptr);
     void      tick(void);
     bool      expired(void);
     bool      active(void) { return _active;}

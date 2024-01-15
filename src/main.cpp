@@ -4,6 +4,7 @@
 #include "Button.h"
 #include "Debug.h"
 #include "Constants.h"
+#include "HTMLPages.h"
 #include "RTClock.h"
 #include "Timer.h"
 #include "Display.h"
@@ -34,15 +35,6 @@ struct TickType {
 };
 
 WebServer* initWebServer(void) {
-  extern  void  handleHome(void);
-  extern  void  handleClock(void);
-  extern  void  handleMsgs(void);
-  extern  void  handleConfigView(void);
-  extern  void  handleConfigDelete(void);
-  extern  void  handleSync(void);
-  extern  void  handleWifi(void);
-  extern  void  handleReboot(void);
-
   WebServer* server = new WebServer(80); 
   
   P("access point: ssid="); P(config->_apSSID); P(" password=|"); P(config->_apPassword);PL("|");
@@ -77,6 +69,7 @@ WebServer* initWebServer(void) {
 
 volatile bool EVENT_CLOCK_1_SEC  = false;
 volatile bool EVENT_DEMO_START   = false;
+volatile bool EVENT_INFO_START   = false;
 
 void schedulerCB1sec(void) { EVENT_CLOCK_1_SEC = true;}
 Task clock1sec(1000, TASK_FOREVER, &schedulerCB1sec);
@@ -86,6 +79,15 @@ Scheduler* initScheduler(void) {
   sch->init();
   sch->addTask(clock1sec);
   return sch;
+}
+
+void  reboot(const char* fcn) {
+  P(fcn);SPACE;PL("reboot:");
+  if (true) {
+    delay(500);
+    WiFi.forceSleepBegin();
+    ESP.restart();
+  }
 }
 
 /*
@@ -136,11 +138,6 @@ void setup() {
   action.startInfo(message, 2); 
 
   server = initWebServer();
-  PVL(config->getTimeEnd());
-  PVL(config->getTimeEndDT().timestamp());
-
-  PVL(config->getTimeStart());
-  PVL(config->getTimeStartDT().timestamp());
 }
 
 /*
@@ -173,6 +170,7 @@ void loop() {
 
     rtc = rtClock->now();  // only grab full date on second tick
     timer100ms.reset();   // reset 1/10 second timer on a full second tick
+    timer500ms.reset();
 
     if (rtc.second()%5==0) {
       P(rtc.timestamp()); 
@@ -187,7 +185,14 @@ void loop() {
     if (EVENT_DEMO_START) {
       EVENT_DEMO_START=false;
       action.startDemo();
-      timer500ms.reset();
+    }
+
+    // start this on a second boundary
+    if (EVENT_INFO_START) {
+      EVENT_INFO_START=false;
+      action.startInfo(config->getMsgEnd(),10);
+      action.print("***** starting action: ");
+      display->refresh(fcn);
     }
   }
  
@@ -207,7 +212,7 @@ void loop() {
   if (action.active()) {
     action.tick();
     if (action.expired()) {
-      action.stop();
+      action.stop(fcn);
       action.restore();
       display->refresh(fcn);
     }
@@ -235,8 +240,7 @@ void loop() {
     delay(2000);
     config->init();
     config->saveFile();
-    extern void reboot(void);
-    reboot();
+    reboot(fcn);
   }
 
  if (updateDisplay) {
@@ -285,14 +289,5 @@ void loop() {
       default :
         break;
     }
-  }
-}
-
-void  reboot(void) {
-//  delay(2000);
-  PL("about to reboot")
-  if (false) {
-    WiFi.forceSleepBegin();
-    ESP.restart();
   }
 }

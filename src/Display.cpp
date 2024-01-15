@@ -42,8 +42,9 @@ void Display::init(void) {
 }
 
 void Display::clear(void) {
+  const char* fcn = "Display:clear:";
   uint8_t brightness = config->_brightness;
-  P("soeone calling clear");
+  PL(fcn);
   for(auto& segment : _segments) {
     segment.device().clear();
     segment.setBrightness(brightness);
@@ -107,16 +108,31 @@ void Display::showClock(const DateTime& dt, uint8_t tenth) {
   showClockSSUU(dt,tenth,format);
 }
 
+/*
+  we have 3 segements, left to right, they are numbered
+  0123 0123 0123    // left most is most significant, indexed by 0
+  seg2 seg1 seg0
+  each segements 4 digits, they are addressed 0123
+  we want to test buffer to be "right justified"
+  lets say the test is
+   01234567890a  12 chars
+  "abcdefghijkl"
+  test[0-3] --> seg2 (abcd)
+  test[4-7] --> seg1 (efgh)
+  test[8-a] --> seg0 (ijkl)
+
+  
+*/
 void Display::showText(const String& msg, bool visible) {
   char     buffer[13];
   uint8_t  data[12];
   bool     colon = false;
   snprintf(buffer,13,"%-12s",msg.c_str());
   // encode the buffer the entire buffer
-  for(int i=0;i<CHARS_PER_MESSAGE;i++)
+  for(int i=0;i<MESSAGE_SIZE;i++)
     data[i] = Segment::encodeChar(buffer[i]);
   // reverse it
-  Segment::reverse(data,CHARS_PER_MESSAGE);
+  Segment::reverse(data,MESSAGE_SIZE);
   // write it
   writeSegment(SSUU, &data[0], colon, visible);
   writeSegment(HHMM, &data[4], colon, visible);
@@ -324,6 +340,6 @@ void  Display::encode(uint8_t data[],char c3, char c2, char c1, char c0) {
 }
 
 void  Display::writeSegment(int id, uint8_t data[], bool colon, bool visible) {
-  uint8_t brightness = config->_brightness;
+  uint8_t brightness = config->getBrightness();
   _segments[id].write(data, colon, brightness, visible);
 }

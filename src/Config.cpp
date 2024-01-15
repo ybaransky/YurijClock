@@ -101,9 +101,20 @@ bool  Config::isTenthSecFormat(void) {
 }
 
 const String& Config::getSSID(void) { return _apSSID;}
-void          Config::setSSID(const String& ssid) {_apSSID = ssid;} 
+void          Config::setSSID(const String& ssid, const char* fcn) {
+  if (fcn) {
+    P(fcn);P("setSSID: "); P(_apSSID);P("-->");PL(ssid);
+  }
+  _apSSID = ssid;
+} 
 const String& Config::getPassword(void) { return _apPassword;}
-void          Config::setPassword(const String& password) {_apPassword = password;} 
+void          Config::setPassword(const String& password, const char* fcn) {
+  if (fcn) {
+    P(fcn);P("setPassword: "); P(_apPassword);P("-->");PL(password);
+  }
+  _apPassword = password;
+} 
+
 
 uint8_t Config::getBrightness(void) { return _brightness;}
 void    Config::setBrightness(uint8_t brightness) { _brightness = brightness; }
@@ -192,11 +203,14 @@ void Config::saveToJson(JsonDocument& doc) const {
 }
 
 // Saves the configuration to a file
-void Config::saveFile(void) const {
+void Config::saveFile(const char* fcn) const {
   const char* filename = getFileName().c_str();
 
   // Delete existing file, otherwise the configuration is appended to the file
-  PL("trying to save "); PL(filename);
+  if (fcn) {
+    P(fcn); P("->saveFile ")
+  }
+  P("saving "); PL(filename);
   StaticJsonDocument<JSON_DOC_SIZE> doc;
   saveToJson(doc);
   serializeJsonPretty(doc,Serial); PL("");
@@ -225,15 +239,14 @@ void Config::saveFile(void) const {
   file.close();
 
   bool exists = FILESYSTEM.exists(filename);
-  P("success? "); PL(exists);
-  PVL(filename);
   if (exists) {
       file = FILESYSTEM.open(filename, FILE_READ);
       size_t filesize = file.size();
       file.close();
-      PVL(filesize);
+      PV(filename);SPACE;PVL(filesize);
   }
 }
+
 void Config::loadFromJson(const JsonDocument& doc) {
   char buffer[32];
 
@@ -245,14 +258,14 @@ void Config::loadFromJson(const JsonDocument& doc) {
     _formats[i] = doc["formats"][i];
   }
 
-  strlcpy(buffer, doc["msgStart"] | _msgStart.c_str(), CHARS_PER_MESSAGE+1); setMsgStart(buffer);
-  strlcpy(buffer, doc["msgSend"]  | _msgEnd.c_str(), CHARS_PER_MESSAGE+1);   setMsgEnd(buffer);
+  strlcpy(buffer, doc["msgStart"]  | _msgStart.c_str(), MESSAGE_SIZE+1); setMsgStart(buffer);
+  strlcpy(buffer, doc["msgEnd"]    | _msgEnd.c_str(),   MESSAGE_SIZE+1);   setMsgEnd(buffer);
 
   strlcpy(buffer, doc["timeStart"] | _timeStart.c_str(), ISOTIME_SIZE+1); setTimeStart(buffer);
-  strlcpy(buffer, doc["timeEnd"]   | _timeEnd.c_str(), ISOTIME_SIZE+1);   setTimeEnd(buffer);
+  strlcpy(buffer, doc["timeEnd"]   | _timeEnd.c_str(),   ISOTIME_SIZE+1);   setTimeEnd(buffer);
   
-  strlcpy(buffer, doc["ssid"]     | _apSSID.c_str(), SSID_SIZE+1);     setSSID(buffer);
-  strlcpy(buffer, doc["password"] | _apPassword.c_str(), SSID_SIZE+1); setPassword(buffer);
+  strlcpy(buffer, doc["ssid"]      | _apSSID.c_str(),     SSID_SIZE+1);     setSSID(buffer);
+  strlcpy(buffer, doc["password"]  | _apPassword.c_str(), SSID_SIZE+1); setPassword(buffer);
 }
 
 // Loads the configuration from a file

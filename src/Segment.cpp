@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <RTClib.h>
 #include "Constants.h"
+#include "PinMap.h"
 #include "Segment.h"
 #include "Debug.h"
 
@@ -44,13 +45,11 @@ void Segment::Data::print(const char* msg) {
 *  statics
 *************************************************************************/
 
-#define COMMON_CLK   1
-#ifdef COMMON_CLK
-static Device  sDevices[N_SEGMENTS] = {Device(D3,D6),Device(D3,D5),Device(D3,D4)};
-//static Device  sDevices[N_DEVICES] = {Device(D3,D4),Device(D3,D5),Device(D3,D6)};
-#else
-static Device sDevices[N_DEVICES] = {Device(D3,D4),Device(D5,D6),Device(RX,TX)};
-#endif
+static Device  sDevices[N_SEGMENTS] = {
+  Device(TM1637_CLK_0, TM1637_DIO_0),
+  Device(TM1637_CLK_1, TM1637_DIO_1),
+  Device(TM1637_CLK_2, TM1637_DIO_2),
+};
 
 #ifdef YURIJ
 static char* reverse(char* data) {
@@ -133,7 +132,18 @@ static uint8_t asciEncoding[96] = {
 0b01101011, /* Q */
 0b00110011, /* R */
 0b01101101, /* S */
-0b01111000, /* T */
+// gfedcba
+0b00110001, /* T */
+  /*       a
+   *      ---
+   *  f |  g | b
+   *      ---
+   *  e |    | c
+   *      ---
+   *       d
+   * a== bit 0... g==bit7
+   */
+//0b01111000, /* T */
 0b00111110, /* U */
 0b00111110, /* V */
 0b00101010, /* W */
@@ -190,7 +200,7 @@ uint8_t Segment::encodeChar(char c) {
 }
 
 void Segment::reverse(uint8_t *data, int n) {
-  uint8_t tmp[CHARS_PER_MESSAGE];
+  uint8_t tmp[MESSAGE_SIZE];
   memcpy(tmp,data, n * sizeof(uint8_t));
   for(int i=0,m=n-1; i<n; i++)  
     data[i] = tmp[m - i];
