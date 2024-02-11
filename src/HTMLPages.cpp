@@ -22,6 +22,7 @@ static  const char*      idMsgEnd="msgEnd";
 static  const char*      idCDFormat="cdFmt";
 static  const char*      idCUFormat="cuFmt";
 static  const char*      idCLFormat="clFmt";
+static  const char*      idHMFormat="hrFmt";
 static  const char*      idTimeEnd="timeEnd";
 static  const char*      idTimeStart="timeStart";
 static  const char*      idSSID="ssid";
@@ -110,7 +111,6 @@ static String inputFieldComboBox(const String& id, const char* choices[], int ic
   return input;
 }
 
-#ifdef YURIJ
 static String inputFieldRadio(const String& id, const char* choices[], const int* values, int choice, int n) {
   String input = "";
   for(int i=0;i<n;i++) {
@@ -121,7 +121,6 @@ static String inputFieldRadio(const String& id, const char* choices[], const int
   }
   return input;
 }
-#endif
 
 static String addInputRow(const char* desc, const String& value) {
   String row("");
@@ -200,7 +199,7 @@ static int comboBoxToBrightness(int value) {
 static void handleClockSave(void) {
   const char* fcn="handleClockSave:";
   int changed = 0;
-  bool guiUpdate = false;  
+  bool refresh = false;  
   String row;
     
   for(int i=0; i<server->args();i++) {
@@ -210,17 +209,24 @@ static void handleClockSave(void) {
     if (server->arg(i).length()) {
       if (server->argName(i) == idCDFormat) {
         if (changedFormat(MODE_COUNTDOWN,idCDFormat,server->arg(i).toInt(),changed)) {
-          guiUpdate = true;
+          refresh = true;
         }
       }
       else if (server->argName(i) == idCUFormat) {
         if (changedFormat(MODE_COUNTUP,idCUFormat,server->arg(i).toInt(),changed)) {
-          guiUpdate = true;
+          refresh = true;
         }
       }
       else if (server->argName(i) == idCLFormat) {
         if (changedFormat(MODE_CLOCK,idCLFormat,server->arg(i).toInt(),changed)) {
-          guiUpdate = true;
+          refresh = true;
+        }
+      }
+      else if (server->argName(i) == idHMFormat) {
+        if (config->getHourMode() != server->arg(i).toInt()) {
+          config->setHourMode(server->arg(i).toInt());
+          changed++;
+          refresh = true;
         }
       }
       else if (server->argName(i) == idTimeStart) {
@@ -239,13 +245,13 @@ static void handleClockSave(void) {
         if ((config->getBrightness()) != brightness) {
           config->setBrightness(brightness);
           changed++;
-          guiUpdate = true;
+          refresh = true;
         }
       }
     }
   }
  
-  if (guiUpdate) {
+  if (refresh) {
     display->refresh(fcn); 
   }
 
@@ -585,12 +591,10 @@ void handleClock(void) {
   field = inputFieldComboBox(idCLFormat,
     formatNamesClock,config->getFormat(MODE_CLOCK),N_FORMAT_CLOCK);
   page += addInputRow("Format", field);  
-  page += R"(<tr><td class='right border grey'>)";
-  page += config->_apSSID; 
-  page += R"( Time</td><td class='left border'>)"; 
-  page += rtClock->now().timestamp(); 
-  page += R"(</td></tr> 
-    </table><br>
+  field = inputFieldRadio(idHMFormat, 
+    hourModeNames, hourModeValues, config->getHourMode(), N_HOUR_MODES);
+  page += addInputRow("Hour Format", field); 
+  page += R"(</table><br>
 
  )";
 
@@ -631,10 +635,10 @@ void  handleConfigView(void) {
   ulong start = millis();
   const char* fcn = "handleConvigView:";
   String msg;
-  String filename(config->getFileName());
+  String filename(CONFIG_FILENAME);
   if (FILESYSTEM.exists(filename)) {
     String json;
-    config->loadFile(json);
+    config->fileToString(json);
     msg = "<pre>" + json + "</pre>";
   } else {
     String msg = "File " + quote(filename) + " not found";
@@ -646,7 +650,7 @@ void  handleConfigView(void) {
 }
 
 void  handleConfigDelete(void) {
-  const String&  filename = config->getFileName();
+  const String&  filename(CONFIG_FILENAME);
   String msg = "File " + quote(filename);
   if (FILESYSTEM.exists(filename)) {
     FILESYSTEM.remove(filename);

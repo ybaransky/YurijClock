@@ -17,6 +17,8 @@ class Config {
         int             getNextFormat(void);
         void            setFormat(int mode);
         void            setFormat(int format, int mode);
+        int             getHourMode(void);
+        void            setHourMode(int hourMode);
         bool            isTenthSecFormat(void);
 
         void            setTimeStart(const String&);    //iso format
@@ -39,13 +41,15 @@ class Config {
         void            setPassword(const String&, const char* fcn=nullptr);
         const String&   getPassword(void);
 
-        const String&   getFileName() const;
-        void            saveFile(const char* fcn=nullptr) const;
-        bool            loadFile(void);         // loads file contents into config
-        bool            loadFile(String& json); // loads file contents into string, not config
+        bool            loadFile(void);                 // loads file contents into config
+        bool            saveFile(const char* fcn=nullptr) const;
+
+        bool            fileToString(String& json) const;   // loads file contents into string, not config
+        void            configToString(String& json) const;
 
         void            print(void) const;
-        void            printJson(void) const;
+        void            printFile(void) const;
+
 
         // when we are the access po
         String          _apSSID;
@@ -65,13 +69,20 @@ class Config {
         int             _mode;
         // each mode has a set of formats
         int             _formats[N_MODES];
+        int             _hourMode;    // 24 or 12 hour mode
 
         // all segments have the same brightness
         uint8_t         _brightness;
+
     private:
-        bool      serialize(Print& dst) const;
-        void      saveToJson(JsonDocument& doc) const;
-        void      loadFromJson(const JsonDocument& doc);
+        void    jsonToConfig(const JsonDocument&);
+        void    configToJson(JsonDocument&) const;
+
+        bool    fileToJson(File&, JsonDocument&) const;
+        bool    jsonToFile(JsonDocument&, File&) const;
+
+        File    getFileObject(const char* mode) const;
+        void    printJsonMemoryStats(JsonDocument& doc) const;
 };
 
 extern Config*  initConfig(void);

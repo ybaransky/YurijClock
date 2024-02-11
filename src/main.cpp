@@ -99,10 +99,14 @@ void  reboot(const char* fcn) {
 void setup() {
   // Initialize serial port
   Serial.begin(9600);
-  while (!Serial) continue;
-  Serial.flush();
-  delay(1000);
+  while (!Serial) 
+    continue;
 
+  for(int i=0;i<5;i++,delay(1000)) {
+    Serial.print('.');
+  }
+  Serial.println();
+  Serial.flush();
   PL("starting");
   
   config    = initConfig();
@@ -122,13 +126,11 @@ void setup() {
     message = "Lost Pwr";
   }
 
-  Serial.flush();
-  delay(1000);
-
-
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
-  config->printJson();
+  config->print();
+//  Serial.flush();
+
   //display->test();
 
   // start the timer for the startup message
@@ -172,7 +174,7 @@ void loop() {
     timer100ms.reset();   // reset 1/10 second timer on a full second tick
     timer500ms.reset();
 
-    if (rtc.second()%5==0) {
+    if (rtc.second()%20==0) {
       P(rtc.timestamp()); 
       P(" mode="); P(modeNames[config->getMode()]);
       P(" addr="); P(WiFi.softAPIP()); 

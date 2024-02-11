@@ -24,7 +24,7 @@ class Display {
     void    showCountSSUU(const TimeSpan&, uint8_t tenth, int);
     
     void    showClockDDDD(const DateTime&, int);
-    void    showClockHHMM(const DateTime&, int);
+    void    showClockHHMM(const DateTime&, int, int);
     void    showClockSSUU(const DateTime&, uint8_t tenth, int);
 
     void    encode(uint8_t*,char, char, char, char);

@@ -104,7 +104,7 @@ void Display::showCount(const TimeSpan& ts, uint8_t tenth) {
 void Display::showClock(const DateTime& dt, uint8_t tenth) {
   int format = config->getFormat();
   showClockDDDD(dt,format);
-  showClockHHMM(dt,format);
+  showClockHHMM(dt,format,config->getHourMode());
   showClockSSUU(dt,tenth,format);
 }
 
@@ -255,18 +255,22 @@ void  Display::showClockDDDD(const DateTime& dt, int format) {
     writeSegment(DDDD, data, colon);
 };
 
-void  Display::showClockHHMM(const DateTime& dt, int format)  {
+void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
   uint8_t data[DIGITS_PER_SEGMENT];
   Digits  mons(dt.month());
   Digits  days(dt.day());
   Digits  hours(dt.hour());
   Digits  mins(dt.minute());
-  bool    showMonsDays  =  (format==0) || (format==1);
-  bool    showMons      =  (format==2);
-  bool    showDays      =  (format==3) || (format==4);
-  bool    showHoursMins =  (format==5) || (format==6) || (format==9) || (format==10);
-  bool    showHours     =  (format==7) || (format==8) || (format==11) || (format==12);
+  bool    showMonsDays  = (format==0) || (format==1);
+  bool    showMons      = (format==2);
+  bool    showDays      = (format==3) || (format==4);
+  bool    showHoursMins = (format==5) || (format==6) || (format==9) || (format==10);
+  bool    showHours     = (format==7) || (format==8) || (format==11) || (format==12);
   bool    colon         = showMonsDays || showHoursMins;
+
+  // do the 12/24 hour mode
+  if (hourMode == HOUR_MODE_12)
+    hours.adjustTo12Hours();
 
   if (showMonsDays) {
     if (mons.d10)  encode(data, mons.c10, mons.c1, days.c10, days.c1);
