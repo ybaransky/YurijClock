@@ -96,16 +96,17 @@ void  Display::refresh(const char* caller) {
 
 void Display::showCount(const TimeSpan& ts, uint8_t tenth) {
   int format = config->getFormat();
-  showCountDDDD(ts,format);
-  showCountHHMM(ts,format);
-  showCountSSUU(ts,tenth,format);
+  showCountDDDD(ts, format);
+  showCountHHMM(ts, format);
+  showCountSSUU(ts, format, tenth);
 
 }
 void Display::showClock(const DateTime& dt, uint8_t tenth) {
   int format = config->getFormat();
-  showClockDDDD(dt,format);
-  showClockHHMM(dt,format,config->getHourMode());
-  showClockSSUU(dt,tenth,format);
+  int hourFormat = config->getHourFormat();
+  showClockDDDD(dt, format);
+  showClockHHMM(dt, format, hourFormat);
+  showClockSSUU(dt, format, tenth, hourFormat);
 }
 
 /*
@@ -195,7 +196,7 @@ void  Display::showCountHHMM(const TimeSpan& ts, int format) {
   writeSegment(HHMM,data,colon);
 };
 
-void  Display::showCountSSUU(const TimeSpan& ts, uint8_t ms100, int format) {
+void  Display::showCountSSUU(const TimeSpan& ts, int format, uint8_t ms100) {
   uint8_t data[DIGITS_PER_SEGMENT];
   Digits  mins(ts.minutes());
   Digits  secs(ts.seconds());
@@ -269,7 +270,7 @@ void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
   bool    colon         = showMonsDays || showHoursMins;
 
   // do the 12/24 hour mode
-  if (hourMode == HOUR_MODE_12)
+  if ((hourMode == HOUR_FORMAT_12) && (showHours || showHoursMins))
     hours.adjustTo12Hours();
 
   if (showMonsDays) {
@@ -291,7 +292,7 @@ void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
   writeSegment(HHMM, data, colon);
 };
  
-void  Display::showClockSSUU(const DateTime& dt, uint8_t ms100,int format) {
+void  Display::showClockSSUU(const DateTime& dt, int format, uint8_t ms100, int hourMode) {
   uint8_t data[DIGITS_PER_SEGMENT];
   Digits  days(dt.day());
   Digits  hours(dt.hour());
@@ -306,6 +307,10 @@ void  Display::showClockSSUU(const DateTime& dt, uint8_t ms100,int format) {
   bool    showMins      = (format==12);
   bool    blinking      = (format==0) || (format==3);
   bool    colon         = showHoursMins || showMinsSecs;
+  
+  if ( (hourMode == HOUR_FORMAT_12) && showHoursMins)
+    hours.adjustTo12Hours();
+
   if (blinking) {
     colon = dt.second() % 2;
   }

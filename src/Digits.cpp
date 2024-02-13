@@ -25,17 +25,17 @@ void  Digits::set(int value) {
 }
 
 bool  Digits::adjustTo12Hours(void) {
-    // if hours > 12, the subtract 12
-    P("before: ");P(d10);SPACE;P(d1);P("    after: ");P(d10);SPACE;PL(d1);
-    bool isPM = true;
+    // return true if we subtracted 12
+//    P("before: ");P(d10);SPACE;P(d1);P("    after: ");P(d10);SPACE;PL(d1);
     int hour = d1 + 10*d10;
     if (hour > 12) {
-        d1  = hour-12;
-        d10 = 0;
-
+        hour -= 12;
+        d1    = hour%10; hour = hour/10;
+        d10   = hour;
+        
         c1  = '0' + d1;
-        c10 = '0';
-        isPM = true;
+        c10 = '0' + d10;
+        return true;
     }
-    return isPM;
+    return false;
 }

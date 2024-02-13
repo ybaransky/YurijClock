@@ -21,11 +21,11 @@ class Display {
   private:
     void    showCountDDDD(const TimeSpan&, int);
     void    showCountHHMM(const TimeSpan&, int);
-    void    showCountSSUU(const TimeSpan&, uint8_t tenth, int);
+    void    showCountSSUU(const TimeSpan&, int, uint8_t);
     
     void    showClockDDDD(const DateTime&, int);
     void    showClockHHMM(const DateTime&, int, int);
-    void    showClockSSUU(const DateTime&, uint8_t tenth, int);
+    void    showClockSSUU(const DateTime&, int, uint8_t, int);
 
     void    encode(uint8_t*,char, char, char, char);
     void    writeSegment(int,uint8_t*, bool colon=false,bool visible=true); 

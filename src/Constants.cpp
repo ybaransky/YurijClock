@@ -100,5 +100,5 @@ const char* modeNames[N_MODES] = {
   "Demo", 
 };
 
-const char* hourModeNames[N_HOUR_MODES]  = {"24hr", "12hr"};
-const int   hourModeValues[N_HOUR_MODES] = {0,1};
+const char* hourModeNames[N_HOUR_FORMATS]  = {"24hr", "12hr"};
+const int   hourModeValues[N_HOUR_FORMATS] = {0,1};

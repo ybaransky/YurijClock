@@ -223,8 +223,8 @@ static void handleClockSave(void) {
         }
       }
       else if (server->argName(i) == idHMFormat) {
-        if (config->getHourMode() != server->arg(i).toInt()) {
-          config->setHourMode(server->arg(i).toInt());
+        if (config->getHourFormat() != server->arg(i).toInt()) {
+          config->setHourFormat(server->arg(i).toInt());
           changed++;
           refresh = true;
         }
@@ -592,7 +592,7 @@ void handleClock(void) {
     formatNamesClock,config->getFormat(MODE_CLOCK),N_FORMAT_CLOCK);
   page += addInputRow("Format", field);  
   field = inputFieldRadio(idHMFormat, 
-    hourModeNames, hourModeValues, config->getHourMode(), N_HOUR_MODES);
+    hourModeNames, hourModeValues, config->getHourFormat(), N_HOUR_FORMATS);
   page += addInputRow("Hour Format", field); 
   page += R"(</table><br>
 

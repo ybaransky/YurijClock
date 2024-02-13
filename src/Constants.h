@@ -28,8 +28,8 @@ enum  {
   MESSAGE_SIZE=12,
   MODE_COUNTDOWN=0, MODE_COUNTUP, MODE_CLOCK, MODE_TEXT, MODE_DEMO, N_MODES,
   N_FORMAT_COUNTDOWN=8, N_FORMAT_COUNTUP=8, N_FORMAT_CLOCK=13, N_FORMAT_TEXT=1, N_FORMAT_DEMO=1,
-  N_HOUR_MODES=2,
-  HOUR_MODE_24=0, HOUR_MODE_12=1,
+  N_HOUR_FORMATS=2,
+  HOUR_FORMAT_24=0, HOUR_FORMAT_12=1,
 };
 
 #define N_ITEMS(x)   (sizeof(x) / sizeof((x)[0]))     // number of elements in array x
@@ -60,7 +60,7 @@ enum  {
 #define DEFAULT_MODE          MODE_COUNTDOWN
 #define DEFAULT_FORMAT        0
 #define DEFAULT_BRIGHTNESS    7   //  1 ... 7
-#define DEFAULT_HOUR_MODE     HOUR_MODE_24   // 24 hour mode
+#define DEFAULT_HOUR_FORMAT   HOUR_FORMAT_24   // 24 hour mode
 
 
 extern const char* formatNamesCountDown[];

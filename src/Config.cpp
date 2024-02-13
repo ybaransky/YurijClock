@@ -37,7 +37,7 @@ void Config::init(void) {
   _mode = DEFAULT_MODE;
   memset(_formats,DEFAULT_FORMAT,sizeof(_formats));
 
-  setHourMode( DEFAULT_HOUR_MODE);
+  setHourFormat( DEFAULT_HOUR_FORMAT);
   setBrightness(DEFAULT_BRIGHTNESS);
 }
 
@@ -75,8 +75,8 @@ void  Config::setFormat(int format, int mode) {
   _formats[mode] = format;
 }
 
-int   Config::getHourMode(void) { return _hourMode;}
-void  Config::setHourMode(int hourMode) { _hourMode = hourMode;}
+int   Config::getHourFormat(void) { return _hourFormat;}
+void  Config::setHourFormat(int hourFormat) { _hourFormat = hourFormat;}
 
 bool  Config::isTenthSecFormat(void) {
   bool rc;
@@ -165,7 +165,7 @@ void Config::printFile(void) const {
 void Config::configToJson(JsonDocument& doc) const {
   // Set the values in the document
   doc["mode"]       = _mode;
-  doc["hourMode"]   = _hourMode;
+  doc["hourFormat"] = _hourFormat;
   doc["brightness"] = _brightness;
   doc["msgStart"]   = _msgStart.c_str();
   doc["msgEnd"]     = _msgEnd.c_str();
@@ -182,7 +182,7 @@ void Config::configToJson(JsonDocument& doc) const {
 void Config::jsonToConfig(const JsonDocument& doc) {
   char buffer[32];
   _mode       = doc["mode"]        | DEFAULT_MODE;
-  _hourMode   = doc["hourMode"]    | DEFAULT_HOUR_MODE;
+  _hourFormat = doc["hourFormat"]  | DEFAULT_HOUR_FORMAT;
   _brightness = doc["brightness"]  | DEFAULT_BRIGHTNESS;
   strlcpy(buffer, doc["msgStart"]  | DEFAULT_MESSAGE_START, MESSAGE_SIZE+1); setMsgStart(buffer);
   strlcpy(buffer, doc["msgEnd"]    | DEFAULT_MESSAGE_END,   MESSAGE_SIZE+1); setMsgEnd(buffer);
