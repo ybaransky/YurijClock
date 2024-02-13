@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include "Constants.h"
 #include "Config.h"
@@ -737,8 +738,8 @@ void handleSync() {
     document.getElementById("syncTime").value = isotime;
   </script>
   </body> 
-</html>)";
+</htm:1
+l>)";
   pageInfo(fcn,page,start);
   server->send(200, "text/html", page);
 }
-
