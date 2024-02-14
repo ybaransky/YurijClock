@@ -48,6 +48,7 @@ WebServer* initWebServer(void) {
 
   server->on("/clock",   handleClock);
   server->on("/msgs",    handleMsgs);
+  server->on("/file",    handleDirectory);
   server->on("/view",    handleConfigView);
   server->on("/delete",  handleConfigDelete);
 

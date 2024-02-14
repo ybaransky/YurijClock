@@ -405,6 +405,7 @@ void handleHome(void) {
     <td class='noborder'> <a href='/msgs'>Message Setup</a></td>
   </tr>
   <tr>
+    <td class='noborder'> <a href='/file'>Directory</a></td>
     <td class='noborder'> <a href='/view'>Config View</a></td>
     <td class='noborder'> <a href='/delete'>Config Reset</a></td>
   </tr>
@@ -738,8 +739,90 @@ void handleSync() {
     document.getElementById("syncTime").value = isotime;
   </script>
   </body> 
-</htm:1
-l>)";
+</html>)";
   pageInfo(fcn,page,start);
+  server->send(200, "text/html", page);
+}
+
+#ifdef YURIJ
+  ulong start = millis();
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>)";
+  page += config->getSSID();
+  page += R"(</h3><hr>
+  <br>
+  <form method ="GET">
+  )";
+  int mode = config->getMode();
+  page += addRootButton(idCDBtn,  "Count Down", mode==MODE_COUNTDOWN);
+  page += addRootButton(idCUBtn,  "Count Up",   mode==MODE_COUNTUP);
+  page += addRootButton(idCLBtn,  "Clock",      mode==MODE_CLOCK);
+  page += addRootButton(idDemoBtn,"Demo",       mode==MODE_DEMO);
+  page += R"(
+  </form>
+  <br><br><br><br><br><br>
+  <table width='95%' align='center' cellspacing='10' cellpadding='10'>
+  <tr>
+    <td class='noborder'> <a href='/clock'>Clock Setup</a></td>
+    <td class='noborder'> <a href='/msgs'>Message Setup</a></td>
+  </tr>
+  <tr>
+    <td class='noborder'> <a href='/view'>Config View</a></td>
+    <td class='noborder'> <a href='/delete'>Config Reset</a></td>
+  </tr>
+  <tr>
+    <td class='noborder'> <a href='/wifi'>Wifi Setup</a></td>
+    <td class='noborder'> <a href='/sync'>Sync Time</a></td>
+  </tr>
+  </table>
+  )";
+  pageInfo(fcn, page, start);
+  server->send(200, "text/html", page);
+
+  // we jump to the homer page before we reboot to prevent
+  // a loop of reconnecting and then rebooting. 
+  // we come here from the handleWifi page
+  if (forceReboot) {
+    extern void reboot(const char*);
+    handleWifiSave(); // mak sure we have the settings
+    reboot(fcn);
+  }
+}
+
+#endif
+
+
+void handleDirectory(void) {
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>Directory</h3><hr>
+  <br>)";
+  Dir dir = FILESYSTEM.openDir("/");
+  page += "<table width='100%'>";
+  page += "<tr><th>File</th><th></th><th>Size</th><th></th></tr>\n";
+  while (dir.next()) {    
+    String path = dir.fileName();
+    size_t size = dir.fileSize();
+    page += "<tr>";
+    page += "<td>" + path + "</td>";
+    page += "<td><a href=/file?path=" + path + "&action=view>View</a></td>";
+    page += "<td>" + String(size) + "</td>";
+    page += "<td><a href=/file?path=" + path + "&action=delete>Delete</a></td>";
+    page += "</tr>\n";
+  }
+  page += R"(</table>
+  <svg version='1.1' baseProfile='full' width='300' height='200' xmlns='http://www.w3.org/2000/svg'>
+  <rect width='100%' height='100%' fill='red' />
+  <circle cx='150' cy='100' r='80' fill='green' />
+  <text x='150' y='125' font-size='60' text-anchor='middle' fill='white'>SVG</text></svg>
+  <div><form action='/home' method='get'><button>Home</button></form></div>
+  </body></html>)";
   server->send(200, "text/html", page);
 }
