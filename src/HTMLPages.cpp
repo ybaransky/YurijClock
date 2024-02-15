@@ -197,6 +197,23 @@ static int comboBoxToBrightness(int value) {
   }
 }
 
+static String getContentType(String filename) {
+  if(filename.endsWith(".htm"))       return "text/html";
+  else if(filename.endsWith(".html")) return "text/html";
+  else if(filename.endsWith(".json")) return "text/json";
+  else if(filename.endsWith(".css"))  return "text/css";
+  else if(filename.endsWith(".png"))  return "image/png";
+  else if(filename.endsWith(".gif"))  return "image/gif";
+  else if(filename.endsWith(".jpg"))  return "image/jpeg";
+  else if(filename.endsWith(".ico"))  return "image/x-icon";
+  else if(filename.endsWith(".xml"))  return "text/xml";
+  else if(filename.endsWith(".pdf"))  return "application/x-pdf";
+  else if(filename.endsWith(".zip"))  return "application/x-zip";
+  else if(filename.endsWith(".gz"))   return "application/x-gzip";
+  else if(filename.endsWith(".js"))   return "application/javascript";
+  return "text/plain";
+}
+
 static void handleClockSave(void) {
   const char* fcn="handleClockSave:";
   int changed = 0;
@@ -806,17 +823,18 @@ void handleDirectory(void) {
   <br>)";
   Dir dir = FILESYSTEM.openDir("/");
   page += "<table width='100%'>";
-  page += "<tr><th>File</th><th></th><th>Size</th><th></th></tr>\n";
+  page += "<tr><th>File</th><th>Size</th><th>Action</th></tr>\n";
   while (dir.next()) {    
     String path = dir.fileName();
     size_t size = dir.fileSize();
     page += "<tr>";
-    page += "<td>" + path + "</td>";
-    page += "<td><a href=/file?path=" + path + "&action=view>View</a></td>";
-    page += "<td>" + String(size) + "</td>";
+   // page += "<td>" + path + "</td>";
+    page += "<td><a href=/file?path=" + path + "&action=view>" + path + "</a></td>";
+    page += "<td style='text-align:right'>" + String(size) + "</td>";
     page += "<td><a href=/file?path=" + path + "&action=delete>Delete</a></td>";
     page += "</tr>\n";
   }
+  /*
   page += R"(</table>
   <svg version='1.1' baseProfile='full' width='300' height='200' xmlns='http://www.w3.org/2000/svg'>
   <rect width='100%' height='100%' fill='red' />
@@ -824,5 +842,33 @@ void handleDirectory(void) {
   <text x='150' y='125' font-size='60' text-anchor='middle' fill='white'>SVG</text></svg>
   <div><form action='/home' method='get'><button>Home</button></form></div>
   </body></html>)";
+  */
   server->send(200, "text/html", page);
 }
+
+void  handleFile(void) {
+  String  path("");
+  String  action("");
+  for (uint8_t i = 0; i < server->args(); i++ ) {
+    if (server->argName(i).equals("path")) 
+      path = server->arg(i);
+    else if (server->argName(i).equals("action"))
+      action = server->arg(i);
+  }
+
+  if (FILESYSTEM.exists(path)) {
+    if (action.equals("view")) {
+      String  context = getContentType(path);
+      File file = FILESYSTEM.open(path,"r");
+      size_t sent = server->streamFile(file, context);
+      file.close();
+      return;
+    } else if (action.equals("delete")) {
+      FILESYSTEM.remove(path);
+      server->send(200, "text/html", "<h1>File:" + path + " removed</h1>");
+      return;
+    }
+  }
+  return;
+}
+
