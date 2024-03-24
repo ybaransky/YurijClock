@@ -94,18 +94,18 @@ void  Display::refresh(const char* caller) {
 ******************************************************************************************
 */
 
-void Display::showCount(const TimeSpan& ts, uint8_t tenth) {
-  int format = config->getFormat();
+void Display::showCount(const TimeSpan& ts, uint8_t tenth, int format) {
   showCountDDDD(ts,format);
   showCountHHMM(ts,format);
   showCountSSUU(ts,tenth,format);
 
 }
-void Display::showClock(const DateTime& dt, uint8_t tenth) {
-  int format = config->getFormat();
+void Display::showClock(const DateTime& dt, uint8_t tenth, int format) {
+  int hourMode = config->getHourMode();
+  int secsMode = config->getSecsMode();
   showClockDDDD(dt,format);
-  showClockHHMM(dt,format,config->getHourMode());
-  showClockSSUU(dt,tenth,format);
+  showClockHHMM(dt,format,hourMode);
+  showClockSSUU(dt,tenth, format, hourMode, secsMode);
 }
 
 /*
@@ -127,7 +127,8 @@ void Display::showText(const String& msg, bool visible) {
   char     buffer[13];
   uint8_t  data[12];
   bool     colon = false;
-  snprintf(buffer,13,"%-12s",msg.c_str());
+  snprintf(buffer,13,"%-12s",msg.c_str());  // left justified
+  snprintf(buffer,13,"%12s",msg.c_str());   // right justified
   // encode the buffer the entire buffer
   for(int i=0;i<MESSAGE_SIZE;i++)
     data[i] = Segment::encodeChar(buffer[i]);
@@ -234,10 +235,10 @@ void  Display::showClockDDDD(const DateTime& dt, int format) {
   Digits  years(dt.year());
   Digits  mons(dt.month());
   Digits  days(dt.day());
-  bool    showYears    = (format==0) || (format==1) || (format==2);
-  bool    showMons     = (format==3) || (format==4);
-  bool    showDays     = (format==9) || (format==10) || (format==11) || (format==12);
-  bool    showMonsDays = (format==5) || (format==6) || (format==7) || (format==8);
+  bool    showYears    = (format==0) || (format==1);
+  bool    showMons     = (format==2);
+  bool    showDays     = (format==7) || (format==8) || (format==9) || (format==10);
+  bool    showMonsDays = (format==3) || (format==4) || (format==5) || (format==6);
   bool    colon        = showMonsDays;
 
   if (showYears) {
@@ -247,12 +248,18 @@ void  Display::showClockDDDD(const DateTime& dt, int format) {
       else          encode(data, space, space,    space, mons.c1);
   } else if (showDays) {
     if (days.d10)   encode(data, space, space, days.c10, days.c1);
-      else          encode(data, space, space,    space, days.c1);
-    } else {
-      if (mons.d10) encode(data, mons.c10, mons.c1, days.c10, days.c1);
-      else          encode(data,    space, mons.c1, days.c10, days.c1);
+    else          encode(data, space, space,    space, days.c1);
+  } else if (showMonsDays) {
+    // if its only a single digit month, lets mofe it to the left 
+    // and not put in the colon
+    if (mons.d10) 
+      encode(data, mons.c10, mons.c1, days.c10, days.c1);
+    else {
+      encode(data,  mons.c1,   space, days.c10, days.c1);
+      colon = false;
     }
-    writeSegment(DDDD, data, colon);
+  }
+  writeSegment(DDDD, data, colon);
 };
 
 void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
@@ -261,20 +268,25 @@ void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
   Digits  days(dt.day());
   Digits  hours(dt.hour());
   Digits  mins(dt.minute());
-  bool    showMonsDays  = (format==0) || (format==1);
-  bool    showMons      = (format==2);
-  bool    showDays      = (format==3) || (format==4);
-  bool    showHoursMins = (format==5) || (format==6) || (format==9) || (format==10);
-  bool    showHours     = (format==7) || (format==8) || (format==11) || (format==12);
+  bool    showMonsDays  = (format==0);
+  bool    showMons      = (format==1);
+  bool    showDays      = (format==2);
+  bool    showHoursMins = (format==3) || (format==4) || (format==7) || (format==8);
+  bool    showHours     = (format==5) || (format==6) || (format==9) || (format==10);
   bool    colon         = showMonsDays || showHoursMins;
 
-  // do the 12/24 hour mode
-  if (hourMode == HOUR_MODE_12)
+  if (hourMode == HOUR_MODE_12) 
     hours.adjustTo12Hours();
 
   if (showMonsDays) {
-    if (mons.d10)  encode(data, mons.c10, mons.c1, days.c10, days.c1);
-    else           encode(data,    space, mons.c1, days.c10, days.c1);
+    // if its only a single digit month, lets mofe it to the left 
+    // and not put in the colon
+    if (mons.d10)  
+      encode(data, mons.c10, mons.c1, days.c10, days.c1);
+    else  {
+      encode(data,  mons.c1,   space, days.c10, days.c1);
+      colon = false;
+    }
   } else if (showMons) {
     if (mons.d10)  encode(data, space, space, mons.c10, mons.c1);
     else           encode(data, space, space,    space, mons.c1);
@@ -291,22 +303,26 @@ void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
   writeSegment(HHMM, data, colon);
 };
  
-void  Display::showClockSSUU(const DateTime& dt, uint8_t ms100,int format) {
+void  Display::showClockSSUU(const DateTime& dt, uint8_t ms100, int format, int hourMode, int secsMode) {
   uint8_t data[DIGITS_PER_SEGMENT];
   Digits  days(dt.day());
   Digits  hours(dt.hour());
   Digits  mins(dt.minute());
   Digits  secs(dt.second());
   Digits  ms(ms100);
-  bool    showHoursMins = (format==0) || (format==1) || (format==3) || (format==4);
-  bool    showDays      = (format==2);
-  bool    showMillis    = (format==5) || (format==9);
-  bool    showSecs      = (format==6) || (format==10);
-  bool    showMinsSecs  = (format==7) || (format==11);
-  bool    showMins      = (format==12);
-  bool    blinking      = (format==0) || (format==3);
+  bool    showHoursMins = (format==0) || (format==2);
+  bool    showDays      = (format==1);
+  bool    showMillis    = (format==3) || (format==7);
+  bool    showSecs      = (format==4) || (format==8);
+  bool    showMinsSecs  = (format==5) || (format==9);
+  bool    showMins      = (format==6) || (format==10);
+  bool    blinking      = (format==0) || (format==2);
   bool    colon         = showHoursMins || showMinsSecs;
-  if (blinking) {
+
+  if (hourMode == HOUR_MODE_12) 
+    hours.adjustTo12Hours();
+
+  if ((SECS_MODE_BLINK == secsMode) && blinking) {
     colon = dt.second() % 2;
   }
 

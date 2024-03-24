@@ -8,6 +8,6 @@ struct Digits {
     Digits(int value=0);
     Digits(uint8_t value=0);
     void  set(int);
-    bool  adjustTo12Hours(void); // true means its pm
+    void  adjustTo12Hours(void); // true means its pm
 };
 

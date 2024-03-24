@@ -37,7 +37,8 @@ void Config::init(void) {
   _mode = DEFAULT_MODE;
   memset(_formats,DEFAULT_FORMAT,sizeof(_formats));
 
-  setHourMode( DEFAULT_HOUR_MODE);
+  setHourMode(DEFAULT_HOUR_MODE);
+  setSecsMode(DEFAULT_SECS_MODE);
   setBrightness(DEFAULT_BRIGHTNESS);
 }
 
@@ -60,7 +61,6 @@ int   Config::getNextFormat(void) {
     case MODE_COUNTDOWN : return format % N_FORMAT_COUNTDOWN; break;
     case MODE_COUNTUP   : return format % N_FORMAT_COUNTUP; break;
     case MODE_CLOCK     : return format % N_FORMAT_CLOCK; break;
-    case MODE_TEXT      : return format % N_FORMAT_TEXT; break;
     default: return 0;
   }
 }
@@ -78,13 +78,16 @@ void  Config::setFormat(int format, int mode) {
 int   Config::getHourMode(void) { return _hourMode;}
 void  Config::setHourMode(int hourMode) { _hourMode = hourMode;}
 
+int   Config::getSecsMode(void) { return _secsMode;}
+void  Config::setSecsMode(int secsMode) { _secsMode = secsMode;}
+
 bool  Config::isTenthSecFormat(void) {
   bool rc;
   int format = _formats[_mode];
   switch(_mode) {
     case MODE_COUNTUP : 
     case MODE_COUNTDOWN : return (format==0) || (format==4); 
-    case MODE_CLOCK :     return (format==5) || (format==9);
+    case MODE_CLOCK :     return (format==3) || (format==7);
     default : return false;
   }
   return rc;
@@ -166,6 +169,7 @@ void Config::configToJson(JsonDocument& doc) const {
   // Set the values in the document
   doc["mode"]       = _mode;
   doc["hourMode"]   = _hourMode;
+  doc["secsMode"]   = _secsMode;
   doc["brightness"] = _brightness;
   doc["msgStart"]   = _msgStart.c_str();
   doc["msgEnd"]     = _msgEnd.c_str();
@@ -183,6 +187,7 @@ void Config::jsonToConfig(const JsonDocument& doc) {
   char buffer[32];
   _mode       = doc["mode"]        | DEFAULT_MODE;
   _hourMode   = doc["hourMode"]    | DEFAULT_HOUR_MODE;
+  _secsMode   = doc["secsMode"]    | DEFAULT_SECS_MODE;
   _brightness = doc["brightness"]  | DEFAULT_BRIGHTNESS;
   strlcpy(buffer, doc["msgStart"]  | DEFAULT_MESSAGE_START, MESSAGE_SIZE+1); setMsgStart(buffer);
   strlcpy(buffer, doc["msgEnd"]    | DEFAULT_MESSAGE_END,   MESSAGE_SIZE+1); setMsgEnd(buffer);
@@ -243,7 +248,7 @@ bool    Config::saveFile(const char* fcn) const {
   StaticJsonDocument<JSON_DOC_SIZE> doc;
   configToJson(doc);
   serializeJsonPretty(doc,Serial); PL("");
-  if (jsonToFile(doc, file)) {
+  if (!jsonToFile(doc, file)) {
     Serial.println(F("Failed to write to file"));
   } else {
     size_t filesize = file.size();

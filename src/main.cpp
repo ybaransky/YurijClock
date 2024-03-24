@@ -21,18 +21,21 @@ RTClock         *rtClock;
 OneButton       *button;
 Display         *display;
 Config          *config;
-Timer           timer100ms;
-Timer           timer500ms;
-String          message;
-Action          action;
 WebServer       *server;
 
+Timer           timer100ms;
+Timer           timer500ms;
+String          actionMessage;
+Action          action;
+
+/*
 struct TickType {
   bool  sec;
   bool  ms100;
   bool  ms500;
   TickType(void) : sec(false),ms100(false),ms500(false) {}
 };
+*/
 
 WebServer* initWebServer(void) {
   WebServer* server = new WebServer(80); 
@@ -69,7 +72,7 @@ WebServer* initWebServer(void) {
 
 volatile bool EVENT_CLOCK_1_SEC  = false;
 volatile bool EVENT_DEMO_START   = false;
-volatile bool EVENT_INFO_START   = false;
+volatile bool EVENT_TEXT_START   = false;
 
 void schedulerCB1sec(void) { EVENT_CLOCK_1_SEC = true;}
 Task clock1sec(1000, TASK_FOREVER, &schedulerCB1sec);
@@ -102,7 +105,7 @@ void setup() {
   while (!Serial) 
     continue;
 
-  for(int i=0;i<5;i++,delay(1000)) {
+  for(int i=0;i<2;i++,delay(1000)) {
     Serial.print('.');
   }
   Serial.println();
@@ -115,16 +118,18 @@ void setup() {
   scheduler = initScheduler();
 
   // this is the startup message
-  message = config->getMsgStart();
+  actionMessage = config->getMsgStart();
 
   // get the rtc rtClock going, but is not found or working
   // then usef the soft rtClock, and set an error msg
-  rtClock     = initRTClock();
-  if (!rtClock->startTicking()) 
+  rtClock = initRTClock();
+  if (rtClock->start()) {
+    if (rtClock->lostPower()) 
+      actionMessage = "Lobatt";
+  } else {
     clock1sec.enable();
-  if (rtClock->lostPower()) {
-    message = "Lost Pwr";
   }
+  actionMessage = "no  rtcloc";
 
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);
@@ -137,7 +142,7 @@ void setup() {
   // and then drop into the saved mode
   timer100ms.start(100);
   timer500ms.start(500);
-  action.startInfo(message, 2); 
+  action.start(Action::TEXT, actionMessage, 5); 
 
   server = initWebServer();
 }
@@ -151,8 +156,6 @@ void setup() {
 void loop() {
   static const char* fcn="mainloop";
   bool updateDisplay = false;
-  bool visible;
-  TickType tickType;
   static TimeSpan ts;
   static DateTime rtc;
   static uint32_t freeHeap = ESP.getFreeHeap();
@@ -167,7 +170,6 @@ void loop() {
 
   if (EVENT_CLOCK_1_SEC) {
     EVENT_CLOCK_1_SEC = false;
-    tickType.sec  = true;
     updateDisplay = true;
 
     rtc = rtClock->now();  // only grab full date on second tick
@@ -186,36 +188,29 @@ void loop() {
     // start this on a second boundary
     if (EVENT_DEMO_START) {
       EVENT_DEMO_START=false;
-      action.startDemo();
+      action.start(Action::DEMO,config->getMsgEnd(),5,true);
     }
 
     // start this on a second boundary
-    if (EVENT_INFO_START) {
-      EVENT_INFO_START=false;
-      action.startInfo(config->getMsgEnd(),10);
-      action.print("***** starting action: ");
-      display->refresh(fcn);
+    if (EVENT_TEXT_START) {
+      EVENT_TEXT_START=false;
+      action.start(Action::TEXT, actionMessage, 5);
     }
   }
  
   // just the 1/10 second timer.
   if (timer100ms.tick()) {
-    tickType.ms100 = true;
-    if (config->isTenthSecFormat() || action.isDemoMode())
-      updateDisplay  = true;
+    updateDisplay = (config->isTenthSecFormat() || action.isDemoMode()) ? true : false;
   }
 
   // this is the msg blinking rate
   if (timer500ms.tick()) {
-    tickType.ms500 = true;
     updateDisplay  = true;
   }
 
   if (action.active()) {
-    action.tick();
-    if (action.expired()) {
+    if (action.isOver()) {
       action.stop(fcn);
-      action.restore();
       display->refresh(fcn);
     }
   }
@@ -223,17 +218,13 @@ void loop() {
   if (BUTTON_SINGLE_CLICK) {
     BUTTON_SINGLE_CLICK = false;
     PL("single button click ");
-    action.startInfo(WiFi.softAPIP().toString(),10000);
-    action.print("***** starting action: ");
-    display->refresh(fcn);
-    timer500ms.reset();
+    EVENT_TEXT_START = action.active() ? false : true;
   }
 
   if (BUTTON_DOUBLE_CLICK) {
     BUTTON_DOUBLE_CLICK = false;
     PL("double button click");
-    if (!action.isDemoMode())
-      EVENT_DEMO_START = true;
+    EVENT_TEXT_START = action.active() ? false : true;
   }
 
   if (BUTTON_LONG_CLICK) {
@@ -248,48 +239,46 @@ void loop() {
  if (updateDisplay) {
     int count = timer100ms.count();
     DateTime expireTime;
-    switch (config->getMode()) {
-      case MODE_COUNTDOWN :
-        expireTime = config->getTimeEndDT();
-        ts = TimeSpan(expireTime.unixtime() - rtc.unixtime());
-        display->showCount(ts, count ? 10-count : count);
-        if (expireTime <= rtc)
-          config->setMode(MODE_TEXT);
-        break;
-      case MODE_COUNTUP :
-        ts = TimeSpan(rtc.unixtime() - config->getTimeStartDT().unixtime());
-        display->showCount(ts, count);
-        break;
-      case MODE_CLOCK:
-        display->showClock(rtc, count);
-        break;
-      case MODE_TEXT:
-        // we could be doing a splash screen or an info msg (like show me the IP address)
-        if (action.active()) {
-          message = action.getMsg();
-          visible = action.isBlinking() ? timer500ms.count()%2 : true;
-        } else {
-          message = config->getMsgEnd();
-          visible = true;
-        }
-        display->showText(message, visible);
-        break;
-      case MODE_DEMO:
-        // this has the countdown part and the text part
-        if (action.getSecsRemaining()>=0) {
-          if (true) {
-            P(millis()); P(" sec="); P(rtc.second()); P(" sec rem=");P(action.getSecsRemaining()); P("  count=");PL(count);
+    if (action.active()) {
+      // we are in some demo-ish mode
+      switch (action.type()) {
+        case Action::DEMO :
+          if (action.showDemoMessage()) {
+            display->showText(config->getMsgEnd(), action.isBlinking() ? !timer500ms.count()%2 : true);
+          } else {
+            ts = TimeSpan(action.getSecsRemaining());
+            display->showCount(ts, count ? 10 - count : count, 0);
           }
-          ts = TimeSpan(action.getSecsRemaining());
-          display->showCount(ts, count ? 10 - count : count);
-        } else {
-          message = action.getMsg();
-          visible = action.isBlinking() ? timer500ms.count()%2 : true;
-          display->showText(message, visible);
-        }
-        break;
-      default :
-        break;
+          break;
+        case Action::TEXT :
+          display->showText(action.getMessage(), action.isBlinking() ? (!timer500ms.count()%2) : true);
+          break;
+        default :
+          P("bad action type:"); PL(action.type());
+      }
+    } else {
+      int format = config->getFormat();
+      switch (config->getMode()) {
+        case MODE_COUNTDOWN :
+          expireTime = config->getTimeEndDT();
+          if (expireTime <= rtc) {
+            display->showText(config->getMsgEnd(), !timer500ms.count()%2 );
+          } else {
+            ts = TimeSpan(expireTime.unixtime() - rtc.unixtime());
+            display->showCount(ts, count ? 10-count : count, format);
+          }
+          break;
+        case MODE_COUNTUP :
+          ts = TimeSpan(rtc.unixtime() - config->getTimeStartDT().unixtime());
+          display->showCount(ts, count, format);
+          break;
+        case MODE_CLOCK:
+          display->showClock(rtc, count, format);
+          break;
+        default :
+          PL("illegal mode");
+          break;
+      }
     }
   }
 }

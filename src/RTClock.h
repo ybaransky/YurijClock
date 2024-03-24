@@ -7,9 +7,9 @@ class RTClock {
     
     public:
         void        init(void);
-        bool        startTicking(void);
+        bool        start(void);
         void        adjust(const DateTime&);
-        bool        noRealTime(void);
+        bool        hasDevice(void);
         bool        lostPower(void);
 
         DateTime    now(void);

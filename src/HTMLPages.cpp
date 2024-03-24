@@ -23,6 +23,7 @@ static  const char*      idCDFormat="cdFmt";
 static  const char*      idCUFormat="cuFmt";
 static  const char*      idCLFormat="clFmt";
 static  const char*      idHMFormat="hrFmt";
+static  const char*      idSMFormat="scFmt";
 static  const char*      idTimeEnd="timeEnd";
 static  const char*      idTimeStart="timeStart";
 static  const char*      idSSID="ssid";
@@ -229,6 +230,13 @@ static void handleClockSave(void) {
           refresh = true;
         }
       }
+      else if (server->argName(i) == idSMFormat) {
+        if (config->getSecsMode() != server->arg(i).toInt()) {
+          config->setSecsMode(server->arg(i).toInt());
+          changed++;
+          refresh = true;
+        }
+      }
       else if (server->argName(i) == idTimeStart) {
         if (config->getTimeStart() != server->arg(i)) {
           config->setTimeStart(server->arg(i));
@@ -266,8 +274,8 @@ static void handleMsgsSave(void) {
   int changed = 0;
 
   if (server->arg("btnMsgs").equals("test")) {
-    extern bool EVENT_INFO_START;
-    EVENT_INFO_START = true;
+    extern bool EVENT_TEXT_START;
+    EVENT_TEXT_START = true;
     P(fcn);PL("setting EVENT_INFO_START to true");
   }
     
@@ -394,7 +402,7 @@ void handleHome(void) {
   page += addRootButton(idCDBtn,  "Count Down", mode==MODE_COUNTDOWN);
   page += addRootButton(idCUBtn,  "Count Up",   mode==MODE_COUNTUP);
   page += addRootButton(idCLBtn,  "Clock",      mode==MODE_CLOCK);
-  page += addRootButton(idDemoBtn,"Demo",       mode==MODE_DEMO);
+  page += addRootButton(idDemoBtn,"Demo",       false);
   page += R"(
   </form>
   <br><br><br><br><br><br>
@@ -594,6 +602,9 @@ void handleClock(void) {
   field = inputFieldRadio(idHMFormat, 
     hourModeNames, hourModeValues, config->getHourMode(), N_HOUR_MODES);
   page += addInputRow("Hour Format", field); 
+  field = inputFieldRadio(idSMFormat, 
+    secsModeNames, secsModeValues, config->getSecsMode(), N_SECS_MODES);
+  page += addInputRow("Seconds Colon", field); 
   page += R"(</table><br>
 
  )";

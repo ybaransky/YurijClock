@@ -14,18 +14,18 @@ class Display {
 //    void    setBrightness();
     void    refresh(const char* caller=nullptr);
 
-    void    showCount(const TimeSpan&, uint8_t tenth=0);
-    void    showClock(const DateTime&, uint8_t tenth=0);
+    void    showCount(const TimeSpan&, uint8_t tenth=0, int format=0);
+    void    showClock(const DateTime&, uint8_t tenth=0, int format=0);
     void    showText(const String&, bool visible);
 
   private:
-    void    showCountDDDD(const TimeSpan&, int);
-    void    showCountHHMM(const TimeSpan&, int);
-    void    showCountSSUU(const TimeSpan&, uint8_t tenth, int);
+    void    showCountDDDD(const TimeSpan&, int format);
+    void    showCountHHMM(const TimeSpan&, int format);
+    void    showCountSSUU(const TimeSpan&, uint8_t tenth, int format);
     
     void    showClockDDDD(const DateTime&, int);
-    void    showClockHHMM(const DateTime&, int, int);
-    void    showClockSSUU(const DateTime&, uint8_t tenth, int);
+    void    showClockHHMM(const DateTime&, int format, int hourMode);
+    void    showClockSSUU(const DateTime&, uint8_t tenth, int format, int hourMode, int secsMode);
 
     void    encode(uint8_t*,char, char, char, char);
     void    writeSegment(int,uint8_t*, bool colon=false,bool visible=true); 

@@ -26,10 +26,10 @@ enum  {
   SSUU=0,HHMM, DDDD, N_SEGMENTS,
   DIGITS_PER_SEGMENT=4,
   MESSAGE_SIZE=12,
-  MODE_COUNTDOWN=0, MODE_COUNTUP, MODE_CLOCK, MODE_TEXT, MODE_DEMO, N_MODES,
-  N_FORMAT_COUNTDOWN=8, N_FORMAT_COUNTUP=8, N_FORMAT_CLOCK=13, N_FORMAT_TEXT=1, N_FORMAT_DEMO=1,
-  N_HOUR_MODES=2,
-  HOUR_MODE_24=0, HOUR_MODE_12=1,
+  MODE_COUNTDOWN=0, MODE_COUNTUP, MODE_CLOCK, N_MODES,
+  N_FORMAT_COUNTDOWN=8, N_FORMAT_COUNTUP=8, N_FORMAT_CLOCK=11,
+  HOUR_MODE_24=0,     HOUR_MODE_12=1,      N_HOUR_MODES,
+  SECS_MODE_BLINK=0,  SECS_MODE_NOBLINK=1, N_SECS_MODES,
 };
 
 #define N_ITEMS(x)   (sizeof(x) / sizeof((x)[0]))     // number of elements in array x
@@ -60,16 +60,17 @@ enum  {
 #define DEFAULT_MODE          MODE_COUNTDOWN
 #define DEFAULT_FORMAT        0
 #define DEFAULT_BRIGHTNESS    7   //  1 ... 7
-#define DEFAULT_HOUR_MODE     HOUR_MODE_24   // 24 hour mode
+#define DEFAULT_HOUR_MODE     HOUR_MODE_24     // 24 hour mode
+#define DEFAULT_SECS_MODE     SECS_MODE_BLINK  // blink the seconds
 
 
 extern const char* formatNamesCountDown[];
 extern const char* formatNamesCountUp[];
 extern const char* formatNamesClock[];
-extern const char* formatNamesText[];
-extern const char* formatNamesDemo[];
 
 extern const char* modeNames[];
 
 extern const char* hourModeNames[];
 extern const int   hourModeValues[];
+extern const char* secsModeNames[];
+extern const int   secsModeValues[];
