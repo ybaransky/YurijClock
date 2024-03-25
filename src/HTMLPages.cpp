@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include "Constants.h"
 #include "Config.h"
@@ -197,6 +198,23 @@ static int comboBoxToBrightness(int value) {
   }
 }
 
+static String getContentType(String filename) {
+  if(filename.endsWith(".htm"))       return "text/html";
+  else if(filename.endsWith(".html")) return "text/html";
+  else if(filename.endsWith(".json")) return "text/json";
+  else if(filename.endsWith(".css"))  return "text/css";
+  else if(filename.endsWith(".png"))  return "image/png";
+  else if(filename.endsWith(".gif"))  return "image/gif";
+  else if(filename.endsWith(".jpg"))  return "image/jpeg";
+  else if(filename.endsWith(".ico"))  return "image/x-icon";
+  else if(filename.endsWith(".xml"))  return "text/xml";
+  else if(filename.endsWith(".pdf"))  return "application/x-pdf";
+  else if(filename.endsWith(".zip"))  return "application/x-zip";
+  else if(filename.endsWith(".gz"))   return "application/x-gzip";
+  else if(filename.endsWith(".js"))   return "application/javascript";
+  return "text/plain";
+}
+
 static void handleClockSave(void) {
   const char* fcn="handleClockSave:";
   int changed = 0;
@@ -224,8 +242,8 @@ static void handleClockSave(void) {
         }
       }
       else if (server->argName(i) == idHMFormat) {
-        if (config->getHourMode() != server->arg(i).toInt()) {
-          config->setHourMode(server->arg(i).toInt());
+        if (config->getHourFormat() != server->arg(i).toInt()) {
+          config->setHourFormat(server->arg(i).toInt());
           changed++;
           refresh = true;
         }
@@ -412,6 +430,7 @@ void handleHome(void) {
     <td class='noborder'> <a href='/msgs'>Message Setup</a></td>
   </tr>
   <tr>
+    <td class='noborder'> <a href='/file'>Directory</a></td>
     <td class='noborder'> <a href='/view'>Config View</a></td>
     <td class='noborder'> <a href='/delete'>Config Reset</a></td>
   </tr>
@@ -600,7 +619,7 @@ void handleClock(void) {
     formatNamesClock,config->getFormat(MODE_CLOCK),N_FORMAT_CLOCK);
   page += addInputRow("Format", field);  
   field = inputFieldRadio(idHMFormat, 
-    hourModeNames, hourModeValues, config->getHourMode(), N_HOUR_MODES);
+    hourModeNames, hourModeValues, config->getHourFormat(), N_HOUR_FORMATS);
   page += addInputRow("Hour Format", field); 
   field = inputFieldRadio(idSMFormat, 
     secsModeNames, secsModeValues, config->getSecsMode(), N_SECS_MODES);
@@ -751,5 +770,116 @@ void handleSync() {
 </html>)";
   pageInfo(fcn,page,start);
   server->send(200, "text/html", page);
+}
+
+#ifdef YURIJ
+  ulong start = millis();
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>)";
+  page += config->getSSID();
+  page += R"(</h3><hr>
+  <br>
+  <form method ="GET">
+  )";
+  int mode = config->getMode();
+  page += addRootButton(idCDBtn,  "Count Down", mode==MODE_COUNTDOWN);
+  page += addRootButton(idCUBtn,  "Count Up",   mode==MODE_COUNTUP);
+  page += addRootButton(idCLBtn,  "Clock",      mode==MODE_CLOCK);
+  page += addRootButton(idDemoBtn,"Demo",       mode==MODE_DEMO);
+  page += R"(
+  </form>
+  <br><br><br><br><br><br>
+  <table width='95%' align='center' cellspacing='10' cellpadding='10'>
+  <tr>
+    <td class='noborder'> <a href='/clock'>Clock Setup</a></td>
+    <td class='noborder'> <a href='/msgs'>Message Setup</a></td>
+  </tr>
+  <tr>
+    <td class='noborder'> <a href='/view'>Config View</a></td>
+    <td class='noborder'> <a href='/delete'>Config Reset</a></td>
+  </tr>
+  <tr>
+    <td class='noborder'> <a href='/wifi'>Wifi Setup</a></td>
+    <td class='noborder'> <a href='/sync'>Sync Time</a></td>
+  </tr>
+  </table>
+  )";
+  pageInfo(fcn, page, start);
+  server->send(200, "text/html", page);
+
+  // we jump to the homer page before we reboot to prevent
+  // a loop of reconnecting and then rebooting. 
+  // we come here from the handleWifi page
+  if (forceReboot) {
+    extern void reboot(const char*);
+    handleWifiSave(); // mak sure we have the settings
+    reboot(fcn);
+  }
+}
+
+#endif
+
+
+void handleDirectory(void) {
+  String page = R"(<!DOCTYPE html>)";
+  page += FPSTR(STYLE_HEAD);
+  page += R"(
+<body>
+  <div style='text-align:center; min-width:260px'>
+  <h3 style='text-align:center; font-weight:bold'>Directory</h3><hr>
+  <br>)";
+  Dir dir = FILESYSTEM.openDir("/");
+  page += "<table width='100%'>";
+  page += "<tr><th>File</th><th>Size</th><th>Action</th></tr>\n";
+  while (dir.next()) {    
+    String path = dir.fileName();
+    size_t size = dir.fileSize();
+    page += "<tr>";
+   // page += "<td>" + path + "</td>";
+    page += "<td><a href=/file?path=" + path + "&action=view>" + path + "</a></td>";
+    page += "<td style='text-align:right'>" + String(size) + "</td>";
+    page += "<td><a href=/file?path=" + path + "&action=delete>Delete</a></td>";
+    page += "</tr>\n";
+  }
+  /*
+  page += R"(</table>
+  <svg version='1.1' baseProfile='full' width='300' height='200' xmlns='http://www.w3.org/2000/svg'>
+  <rect width='100%' height='100%' fill='red' />
+  <circle cx='150' cy='100' r='80' fill='green' />
+  <text x='150' y='125' font-size='60' text-anchor='middle' fill='white'>SVG</text></svg>
+  <div><form action='/home' method='get'><button>Home</button></form></div>
+  </body></html>)";
+  */
+  server->send(200, "text/html", page);
+}
+
+void  handleFile(void) {
+  String  path("");
+  String  action("");
+  for (uint8_t i = 0; i < server->args(); i++ ) {
+    if (server->argName(i).equals("path")) 
+      path = server->arg(i);
+    else if (server->argName(i).equals("action"))
+      action = server->arg(i);
+  }
+
+  if (FILESYSTEM.exists(path)) {
+    if (action.equals("view")) {
+      String  context = getContentType(path);
+      File file = FILESYSTEM.open(path,"r");
+      size_t sent = server->streamFile(file, context);
+      file.close();
+      return;
+    } else if (action.equals("delete")) {
+      FILESYSTEM.remove(path);
+      server->send(200, "text/html", "<h1>File:" + path + " removed</h1>");
+      return;
+    }
+  }
+  return;
 }
 

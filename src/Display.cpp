@@ -94,6 +94,7 @@ void  Display::refresh(const char* caller) {
 ******************************************************************************************
 */
 
+<<<<<<< HEAD
 void Display::showCount(const TimeSpan& ts, uint8_t tenth, int format) {
   showCountDDDD(ts,format);
   showCountHHMM(ts,format);
@@ -106,6 +107,21 @@ void Display::showClock(const DateTime& dt, uint8_t tenth, int format) {
   showClockDDDD(dt,format);
   showClockHHMM(dt,format,hourMode);
   showClockSSUU(dt,tenth, format, hourMode, secsMode);
+=======
+void Display::showCount(const TimeSpan& ts, uint8_t tenth) {
+  int format = config->getFormat();
+  showCountDDDD(ts, format);
+  showCountHHMM(ts, format);
+  showCountSSUU(ts, format, tenth);
+
+}
+void Display::showClock(const DateTime& dt, uint8_t tenth) {
+  int format = config->getFormat();
+  int hourFormat = config->getHourFormat();
+  showClockDDDD(dt, format);
+  showClockHHMM(dt, format, hourFormat);
+  showClockSSUU(dt, format, tenth, hourFormat);
+>>>>>>> 727ced071f3559396ad7d1b6e8b82d5ad214b861
 }
 
 /*
@@ -196,7 +212,7 @@ void  Display::showCountHHMM(const TimeSpan& ts, int format) {
   writeSegment(HHMM,data,colon);
 };
 
-void  Display::showCountSSUU(const TimeSpan& ts, uint8_t ms100, int format) {
+void  Display::showCountSSUU(const TimeSpan& ts, int format, uint8_t ms100) {
   uint8_t data[DIGITS_PER_SEGMENT];
   Digits  mins(ts.minutes());
   Digits  secs(ts.seconds());
@@ -275,7 +291,12 @@ void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
   bool    showHours     = (format==5) || (format==6) || (format==9) || (format==10);
   bool    colon         = showMonsDays || showHoursMins;
 
+<<<<<<< HEAD
   if (hourMode == HOUR_MODE_12) 
+=======
+  // do the 12/24 hour mode
+  if ((hourMode == HOUR_FORMAT_12) && (showHours || showHoursMins))
+>>>>>>> 727ced071f3559396ad7d1b6e8b82d5ad214b861
     hours.adjustTo12Hours();
 
   if (showMonsDays) {
@@ -303,7 +324,11 @@ void  Display::showClockHHMM(const DateTime& dt, int format, int hourMode)  {
   writeSegment(HHMM, data, colon);
 };
  
+<<<<<<< HEAD
 void  Display::showClockSSUU(const DateTime& dt, uint8_t ms100, int format, int hourMode, int secsMode) {
+=======
+void  Display::showClockSSUU(const DateTime& dt, int format, uint8_t ms100, int hourMode) {
+>>>>>>> 727ced071f3559396ad7d1b6e8b82d5ad214b861
   uint8_t data[DIGITS_PER_SEGMENT];
   Digits  days(dt.day());
   Digits  hours(dt.hour());
@@ -318,11 +343,19 @@ void  Display::showClockSSUU(const DateTime& dt, uint8_t ms100, int format, int 
   bool    showMins      = (format==6) || (format==10);
   bool    blinking      = (format==0) || (format==2);
   bool    colon         = showHoursMins || showMinsSecs;
+<<<<<<< HEAD
 
   if (hourMode == HOUR_MODE_12) 
     hours.adjustTo12Hours();
 
   if ((SECS_MODE_BLINK == secsMode) && blinking) {
+=======
+  
+  if ( (hourMode == HOUR_FORMAT_12) && showHoursMins)
+    hours.adjustTo12Hours();
+
+  if (blinking) {
+>>>>>>> 727ced071f3559396ad7d1b6e8b82d5ad214b861
     colon = dt.second() % 2;
   }
 

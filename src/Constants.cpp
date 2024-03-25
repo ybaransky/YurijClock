@@ -88,8 +88,13 @@ const char* modeNames[N_MODES] = {
   "Clock", 
 };
 
+<<<<<<< HEAD
 const char* hourModeNames[N_HOUR_MODES]  = {"24hr", "12hr"};
 const int   hourModeValues[N_HOUR_MODES] = {0,1};
 
 const char* secsModeNames[N_SECS_MODES]  = {"blink", "no blink"};
 const int   secsModeValues[N_SECS_MODES] = {0,1};
+=======
+const char* hourModeNames[N_HOUR_FORMATS]  = {"24hr", "12hr"};
+const int   hourModeValues[N_HOUR_FORMATS] = {0,1};
+>>>>>>> 727ced071f3559396ad7d1b6e8b82d5ad214b861
