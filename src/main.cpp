@@ -106,7 +106,7 @@ void setup() {
   while (!Serial) 
     continue;
 
-  for(int i=0;i<2;i++,delay(1000)) {
+  for(int i=0;i<1;i++,delay(1000)) {
     Serial.print('.');
   }
   Serial.println();
@@ -130,7 +130,7 @@ void setup() {
   } else {
     clock1sec.enable();
   }
-  actionMessage = "no  rtcloc";
+  // actionMessage = "no  rtcloc";
 
   PL("");
   P("compile time: "); PL(__TIMESTAMP__);

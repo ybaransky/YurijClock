@@ -17,15 +17,10 @@ class Config {
         int             getNextFormat(void);
         void            setFormat(int mode);
         void            setFormat(int format, int mode);
-<<<<<<< HEAD
         int             getHourMode(void);
         void            setHourMode(int hourMode);
         int             getSecsMode(void);
         void            setSecsMode(int secsMode);
-=======
-        int             getHourFormat(void);
-        void            setHourFormat(int hourFormat);
->>>>>>> 727ced071f3559396ad7d1b6e8b82d5ad214b861
         bool            isTenthSecFormat(void);
 
         void            setTimeStart(const String&);    //iso format
@@ -76,12 +71,8 @@ class Config {
         int             _mode;
         // each mode has a set of formats
         int             _formats[N_MODES];
-<<<<<<< HEAD
         int             _hourMode;    // 24 or 12 hour mode
         int             _secsMode;    // blink colon every second
-=======
-        int             _hourFormat;    // 24 or 12 hour format
->>>>>>> 727ced071f3559396ad7d1b6e8b82d5ad214b861
 
         // all segments have the same brightness
         uint8_t         _brightness;
