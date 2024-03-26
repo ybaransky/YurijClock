@@ -858,6 +858,7 @@ void handleDirectory(void) {
 }
 
 void  handleFile(void) {
+  const char *fcn = "handleFile:";
   String  path("");
   String  action("");
   for (uint8_t i = 0; i < server->args(); i++ ) {
@@ -866,12 +867,15 @@ void  handleFile(void) {
     else if (server->argName(i).equals("action"))
       action = server->arg(i);
   }
+  P(fcn);SPACE;PV(path);SPACE;PVL(action);
 
   if (FILESYSTEM.exists(path)) {
+    PL("file exists");
     if (action.equals("view")) {
       String  context = getContentType(path);
       File file = FILESYSTEM.open(path,"r");
       size_t sent = server->streamFile(file, context);
+      PVL(sent);
       file.close();
       return;
     } else if (action.equals("delete")) {
