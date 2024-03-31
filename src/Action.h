@@ -5,7 +5,7 @@
 class Action {
   public:
     enum Type {
-      NONE, TEXT, DEMO, FINAL
+      NONE, TEXT, DEMO, ADDR, FINAL
     };
     Action() : _active(false) {}
     void      start(Type id, const String& msg, ulong seconds, bool blinking=false);
@@ -14,6 +14,7 @@ class Action {
     Type      type(void) { return _type;}
     bool      active(void) { return _active;}
     void      print(const char* msg=nullptr);
+    ulong     startTime(void) const {return _start;}
 
     const String&   getMessage(void) { return _message;}
     bool            isOver(void);

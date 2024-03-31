@@ -51,14 +51,15 @@ WebServer* initWebServer(void) {
 
   server->on("/clock",   handleClock);
   server->on("/msgs",    handleMsgs);
-  server->on("/file",    handleDirectory);
-  server->on("/view",    handleConfigView);
-  server->on("/delete",  handleConfigDelete);
+  server->on("/dir",     handleDirectory);
+  server->on("/file",    handleFile);
+  server->on("/view",    handleViewConfig);
+  server->on("/delete",  handleDeleteConfig);
 
-  server->on("/sync",     handleSync);
-  server->on("/wifi",     handleWifi);
+  server->on("/sync",    handleSync);
+  server->on("/wifi",    handleWifi);
 
-  server->on("/reboot",   handleReboot);
+  server->on("/reboot",  handleReboot);
   server->begin();
   PL("Webserver started")
 
@@ -71,9 +72,10 @@ WebServer* initWebServer(void) {
 **********************************************************************
 */
 
-volatile bool EVENT_CLOCK_1_SEC  = false;
-volatile bool EVENT_DEMO_START   = false;
-volatile bool EVENT_TEXT_START   = false;
+volatile bool EVENT_CLOCK_1_SEC = false;
+volatile bool EVENT_DEMO_START  = false;
+volatile bool EVENT_TEXT_START  = false;
+volatile bool EVENT_ADDR_START  = false;
 
 void schedulerCB1sec(void) { EVENT_CLOCK_1_SEC = true;}
 Task clock1sec(1000, TASK_FOREVER, &schedulerCB1sec);
@@ -197,6 +199,11 @@ void loop() {
       EVENT_TEXT_START=false;
       action.start(Action::TEXT, actionMessage, 5);
     }
+
+    if (EVENT_ADDR_START) {
+      EVENT_ADDR_START=false;
+      action.start(Action::ADDR, actionMessage, 8);
+    }
   }
  
   // just the 1/10 second timer.
@@ -213,13 +220,16 @@ void loop() {
     if (action.isOver()) {
       action.stop(fcn);
       display->refresh(fcn);
+      EVENT_ADDR_START = false;
+      EVENT_TEXT_START = false;
+      EVENT_DEMO_START = false;
     }
   }
  
   if (BUTTON_SINGLE_CLICK) {
     BUTTON_SINGLE_CLICK = false;
     PL("single button click ");
-    EVENT_TEXT_START = action.active() ? false : true;
+    EVENT_ADDR_START = action.active() ? false : true;
   }
 
   if (BUTTON_DOUBLE_CLICK) {
@@ -239,6 +249,9 @@ void loop() {
 
  if (updateDisplay) {
     int count = timer100ms.count();
+    ulong timeSinceStart;
+    char buffer[13];
+    IPAddress ipaddr;
     DateTime expireTime;
     if (action.active()) {
       // we are in some demo-ish mode
@@ -254,6 +267,21 @@ void loop() {
         case Action::TEXT :
           display->showText(action.getMessage(), action.isBlinking() ? (!timer500ms.count()%2) : true);
           break;
+
+        case Action::ADDR :
+          ipaddr = WiFi.softAPIP();
+          timeSinceStart = (millis() - action.startTime()) / 1000;
+          if ( (timeSinceStart >= 0) && (timeSinceStart < 2)) 
+            sprintf(buffer,"  IPAddr%4d", ipaddr[0]);
+          else if ( (timeSinceStart >= 2) && (timeSinceStart < 4)) 
+            sprintf(buffer,"  IPAddr%4d", ipaddr[1]);
+          else if ( (timeSinceStart >= 4) && (timeSinceStart < 6))
+            sprintf(buffer,"  IPAddr%4d", ipaddr[2]);
+          else if (timeSinceStart >= 6) 
+            sprintf(buffer,"  IPAddr%4d", ipaddr[3]);
+          display->showText(String(buffer));
+          break;
+
         default :
           P("bad action type:"); PL(action.type());
       }

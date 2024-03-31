@@ -16,7 +16,7 @@ class Display {
 
     void    showCount(const TimeSpan&, uint8_t tenth=0, int format=0);
     void    showClock(const DateTime&, uint8_t tenth=0, int format=0);
-    void    showText(const String&, bool visible);
+    void    showText(const String&, bool visible = true);
 
   private:
     void    showCountDDDD(const TimeSpan&, int format);

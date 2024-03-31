@@ -11,14 +11,16 @@
 // TM1637 displays  
 #define COMMON_CLK   1
 #ifdef COMMON_CLK
-    #define TM1637_CLK_0    D3
-    #define TM1637_DIO_0    D6
+    #define TM1637_CLK_2    D3 
+    #define TM1637_DIO_2    D4  // yyyy
 
     #define TM1637_CLK_1    D3 
-    #define TM1637_DIO_1    D5
+    #define TM1637_DIO_1    D5  // hhmm
 
-    #define TM1637_CLK_2    D3 
-    #define TM1637_DIO_2    D4 
+    #define TM1637_CLK_0    D3
+    #define TM1637_DIO_0    D6  // ssuu
+
+
 #else
     #define TM1637_CLK_0    D3
     #define TM1637_DIO_0    D4

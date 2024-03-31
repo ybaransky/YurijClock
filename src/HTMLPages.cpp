@@ -9,6 +9,7 @@ extern Display    *display;
 extern RTClock    *rtClock;
 extern Config     *config;
 extern WebServer  *server;
+extern String     actionMessage;
 
 static  bool bFromWifiPage = false;
 
@@ -20,6 +21,7 @@ static  const String     TABLE = "<table width='95%' align='center'>";
 
 static  const char*      idMsgStart="msgStart";
 static  const char*      idMsgEnd="msgEnd";
+static  const char*      idMsgTest="msgTest";
 static  const char*      idCDFormat="cdFmt";
 static  const char*      idCUFormat="cuFmt";
 static  const char*      idCLFormat="clFmt";
@@ -70,11 +72,13 @@ static void pageInfo(const char* msg, const String& page, ulong start)  {
   P(msg); SPACE; P(page.length()); P(" bytes sent in "); P(ms); PL("ms");
 }
 
-static String inputFieldText(const String& id, const String& text, int size=0) 
+static String inputFieldText(const String& id, const String& text, int size=0, const char* fontsize=0) 
 {
   String input = NL;
   input += "<input ";
   input += "type='text' ";
+  if (fontsize)
+    input += fontsize;
   input += "id="          + quote(id)  + BLANK;
   input += "name="        + quote(id)  + BLANK;
   input += "placeholder=" + quote(text) + BLANK;
@@ -145,7 +149,7 @@ static String addRootButton(const String& id, const char* text,  bool active) {
   return field;
 }
 
-static String getFileMsg(const String& msg) {
+static String getFileBody(const String& msg) {
   String page = "<!doctype html><html lang='en'>";
   page += FPSTR(STYLE_HEAD);
   page += R"(
@@ -314,13 +318,17 @@ static void handleMsgsSave(void) {
           changed++;
         }
       }
+      else if (server->argName(i) == idMsgTest) {
+        if (actionMessage != server->arg(i)) {
+          actionMessage = server->arg(i);
+        }
+      }
     }
   }
  
   if (changed) {
     config->saveFile(fcn);
   }
-
   P(fcn); P(" changed=");PL(changed);
 }
 
@@ -430,7 +438,7 @@ void handleHome(void) {
     <td class='noborder'> <a href='/msgs'>Message Setup</a></td>
   </tr>
   <tr>
-    <td class='noborder'> <a href='/file'>Directory</a></td>
+    <td class='noborder'> <a href='/dir'>Directory</a></td>
     <td class='noborder'> <a href='/view'>Config View</a></td>
     <td class='noborder'> <a href='/delete'>Config Reset</a></td>
   </tr>
@@ -462,7 +470,7 @@ void handleMsgs(void) {
   } 
 
   ulong start = millis();
-  String field;
+  String field, button;
 
   String page = R"(<!DOCTYPE html>)";
   page += FPSTR(STYLE_HEAD);
@@ -481,19 +489,27 @@ void handleMsgs(void) {
   <caption>Start/Final Message</caption>
   <col width='50%'><col width='50%'>
   )";
-  field = inputFieldText(idMsgStart, config->getMsgStart(), 13);
-  page += addInputRow("Start (0-12)", field);
-  field = inputFieldText(idMsgEnd, config->getMsgEnd(), 13);
-  page += addInputRow("Final (0-12)", field);
-  page += R"(</table><br>)";
+  field = inputFieldText(idMsgStart, config->getMsgStart(), 12);
+  page += addInputRow("Start Msg (12 max)", field);
+  field = inputFieldText(idMsgEnd, config->getMsgEnd(), 12);
+  page += addInputRow("Final MSg (12 max)", field);
+  page += R"(</table><br>
+  <p>
+  <p>)";
+
+  page += R"(<button type='submit' name='btnMsgs' value='test'>Test Display</button>)";
+  page += inputFieldText(idMsgTest, actionMessage, 12, 
+      " style='font-size:1.2rem; border:2px solid red;'");
 
 /*********************************************************************
  * Form Buttons
  ********************************************************************/
 page += R"(
   <p>
+  <p>
+  <br>
+  <br>
   <button type='submit' name='btnMsgs' value='save'>Save</button> 
-  <button type='submit' name='btnMsgs' value='test'>Test</button>
   <p>
   <button type='submit' name='btnMsgs' value='home' formaction='/'>Home</button>
   </form> 
@@ -661,7 +677,7 @@ page += R"(
   return;
 }
 
-void  handleConfigView(void) {
+void  handleViewConfig(void) {
   ulong start = millis();
   const char* fcn = "handleConvigView:";
   String msg;
@@ -673,13 +689,13 @@ void  handleConfigView(void) {
   } else {
     String msg = "File " + quote(filename) + " not found";
   }
-  String page = getFileMsg(msg);
+  String page = getFileBody(msg);
   pageInfo(fcn,page,start);
   server->send(200, "text/html", page);
   return;
 }
 
-void  handleConfigDelete(void) {
+void  handleDeleteConfig(void) {
   const String&  filename(CONFIG_FILENAME);
   String msg = "File " + quote(filename);
   if (FILESYSTEM.exists(filename)) {
@@ -688,7 +704,7 @@ void  handleConfigDelete(void) {
   } else {
     msg += " not found!";
   }
-  server->send(200, "text/html", getFileMsg(msg)); 
+  server->send(200, "text/html", getFileBody(msg)); 
   return;
 }
 
@@ -845,6 +861,14 @@ void handleDirectory(void) {
     page += "<td><a href=/file?path=" + path + "&action=delete>Delete</a></td>";
     page += "</tr>\n";
   }
+  page += R"(</table>
+  <br>
+  <form method='GET'>
+  <button type='submit' formaction='/dir'>Refresh</button>
+  <p>
+  <button type='submit' formaction='/'>Home</button>
+  </form>
+  </body></html>)";
   /*
   page += R"(</table>
   <svg version='1.1' baseProfile='full' width='300' height='200' xmlns='http://www.w3.org/2000/svg'>
