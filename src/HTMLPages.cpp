@@ -379,22 +379,29 @@ static void handleWifiSave(void) {
 
 static void handleHomeSave(void) {
   const char* fcn="handleHomeSave";
+  int changed = 0;
   PL(fcn);
   for(int i=0; i<server->args();i++) {
     PL(String(i) + ") " + server->argName(i) + " len=" + String(server->arg(i).length()) + " arg==|" + server->arg(i) + "|");
     if (server->arg("btnHome").equals(idCDBtn)) {
       config->setMode(MODE_COUNTDOWN,fcn);
+      changed++;
     }
     else if (server->arg("btnHome").equals(idCUBtn)) {
       config->setMode(MODE_COUNTUP,fcn);
+      changed++;
     }
     else if (server->arg("btnHome").equals(idCLBtn)) {
       config->setMode(MODE_CLOCK,fcn);
+      changed++;
     }
     else if (server->arg("btnHome").equals(idDemoBtn)) {
       extern bool EVENT_DEMO_START;
       EVENT_DEMO_START = true;
     }
+  }
+  if (changed) {
+    config->saveFile(fcn);
   }
 }
 
